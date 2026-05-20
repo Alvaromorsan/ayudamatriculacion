@@ -1,0 +1,1611 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MatriAndalucía - Multilingual Enrollment Assistant</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React y ReactDOM CDN -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <!-- Babel Standalone para compilar JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        /* Personalización de scrollbars */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f8fafc;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+            border: 2px solid #f8fafc;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        .message-appear {
+            animation: fadeInUp 0.3s ease-out forwards;
+        }
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen">
+
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // --- DICCIONARIOS COMPLETOS PARA LOS 9 IDIOMAS ---
+        const TRANSLATIONS = {
+            es: {
+                dir: "ltr",
+                welcome: "Bienvenido a MatriAndalucía",
+                selectLang: "Elige tu idioma para continuar",
+                navPlanner: "Mis Elecciones",
+                navChat: "Asistente Virtual",
+                navCheck: "Documentación",
+                navGuide: "Paso a Paso",
+                deadlineTitle: "Plazo de Matrícula (ESO y Bachillerato)",
+                deadlineDesc: "Del 1 al 10 de julio en la Secretaría Virtual.",
+                step: "Paso",
+                order: "Orden",
+                print: "Guardar en PDF o Imprimir",
+                summaryTitle: "Mis Elecciones",
+                summaryDesc: "Usa esta hoja como apoyo visual para el proceso oficial.",
+                course: "Curso",
+                subjectDirigida: "Elección Dirigida Obligatoria",
+                subjectOptativa: "Ordena todas las materias optativas",
+                subjectOptativaDesc: "⚠️ Imprescindible en Andalucía: Debes pulsar sobre todas las materias en tu orden personal de preferencia (de la que más te gusta a la que menos). Si te equivocas, vuelve a pulsar una materia ya seleccionada para desmarcarla y corregir el orden.",
+                subjectTroncal: "Asignaturas Obligatorias Comunes",
+                subjectTroncalDesc: "Materias troncales y fijas que cursarán obligatoriamente todos los alumnos matriculados en este nivel de forma común.",
+                subjectReligion: "Valores / Religión",
+                services: "Servicios Complementarios",
+                transporte: "Transporte Escolar",
+                comedor: "Comedor Escolar",
+                ampa: "Socio AMPA",
+                pending: "Pendiente",
+                faqTitle: "Dudas Frecuentes",
+                chatHeader: "Soporte Local de Matrícula",
+                typing: "Escribiendo...",
+                placeholderChat: "Escribe tu duda aquí...",
+                checklistTitle: "¿Qué papeles debes preparar?",
+                checkDesc: "Marca tu situación familiar y te diremos de forma personalizada qué tener escaneado en el móvil o PC.",
+                commonDocsTitle: "Comunes Obligatorios para TODOS",
+                commonDocs: [
+                    "Fotografía tipo carnet del alumno/a en formato digital (JPG o PNG).",
+                    "DNI / NIE de los tutores legales y del alumno (obligatorio a partir de 14 años).",
+                    "Clave iANDE o Certificado Digital (revisa Comunicaciones en iPASEN)."
+                ],
+                conditionalDocsTitle: "Documentos Según tus Circunstancias",
+                condSeparados: "Sentencia judicial o convenio de custodia (Obligatorio si firma un solo progenitor).",
+                condAlergias: "Informe médico oficial (Imprescindible para dietas especiales o protocolo de salud).",
+                condComedor: "Informe de Vida Laboral y Certificado de Horario de Trabajo de ambos tutores.",
+                condDiscapacidad: "Certificado de Discapacidad oficial igual o superior al 33%.",
+                condFamNum: "Título de Familia Numerosa o Monoparental en vigor.",
+                condTraslado: "Certificado oficial de Calificaciones de su centro de origen anterior.",
+                condNone: "No has seleccionado ninguna situación especial. Solo necesitas aportar los documentos comunes obligatorios.",
+                checkSeparados: "Padres Separados o Divorciados",
+                checkAlergias: "Alergias o Enfermedades Crónicas",
+                checkComedor: "Solicitud de Comedor Escolar",
+                checkDiscapacidad: "Discapacidad Reconocida",
+                checkFamNum: "Familia Numerosa / Monoparental",
+                checkTraslado: "Traslado o Nuevo Centro",
+                guideTitle: "Guía de la Secretaría Virtual",
+                guideDesc: "Recorrido paso a paso por las pantallas oficiales.",
+                guide1Title: "1. Identificación con iANDE",
+                guide1Desc: "Accede al portal oficial e introduce la clave iANDE (disponible en iPASEN) junto a la fecha de nacimiento de tu hijo/a.",
+                guide2Title: "2. Ficha de Datos Personales",
+                guide2Desc: "Completa y verifica la información familiar y sube obligatoriamente la fotografía digital del alumno.",
+                guide3Title: "3. Elección de Asignaturas y Servicios",
+                guide3Desc: "Rellena los impresos oficiales. Ordena las asignaturas optativas y solicita el transporte o comedor si procede.",
+                guide4Title: "4. Seguro Escolar (Obligatorio desde 3º ESO)",
+                guide4Desc: "Si matriculas en un curso a partir de 3º de ESO, el sistema te redirigirá para pagar 1,12 € de forma segura con tarjeta bancaria.",
+                guide5Title: "5. Firma Telemática por SMS",
+                guide5Desc: "Revisa el borrador en PDF, introduce tu número de teléfono móvil para recibir el código SMS de firma y descarga tu resguardo definitivo.",
+                bannerGuide: "Ver Guía de Pantallas",
+                footerText: "MatriAndalucía — Herramienta informativa de libre distribución para la comunidad escolar. Sin afiliación con la Consejería de Desarrollo Educativo de la Junta de Andalucía.",
+                officialPortal: "Portal Secretaría Virtual ↗",
+                remainingToOrderMsg: " materias por priorizar a la izquierda.",
+                btnProgressPending: "Completa el borrador para guardar",
+                btnProgressReady: "Guardar en PDF o Imprimir",
+                observacionPrefix: "Atención:",
+                chatWelcome: "¡Hola! 👋 Te doy la bienvenida al asistente interactivo de matrícula para Andalucía. Escribe tu duda o haz clic en las preguntas frecuentes del panel izquierdo.",
+                langLabel: "Idioma",
+                itineraryLabel: "Itinerario / Vía",
+                alertRequired: "Debes ordenar todas las optativas y seleccionar las dirigidas para imprimir.",
+                back: "Menú Idiomas 🌍"
+            },
+            en: {
+                dir: "ltr",
+                welcome: "Welcome to MatriAndalucía",
+                selectLang: "Choose your language to continue",
+                navPlanner: "My Choices",
+                navChat: "Virtual Assistant",
+                navCheck: "Documentation",
+                navGuide: "Step by Step",
+                deadlineTitle: "Enrollment Period (Secondary & High School)",
+                deadlineDesc: "From July 1st to 10th on the official Virtual Secretariat.",
+                step: "Step",
+                order: "Order",
+                print: "Save as PDF or Print",
+                summaryTitle: "My Selections",
+                summaryDesc: "Use this summary sheet to easily complete the official online application.",
+                course: "Academic Year",
+                subjectDirigida: "Mandatory Target Selection",
+                subjectOptativa: "Rank all elective subjects",
+                subjectOptativaDesc: "⚠️ Mandatory in Andalusia: You must click on all subjects in your personal order of preference (from your favorite to least favorite). If you make a mistake, click on a selected subject again to unmark it.",
+                subjectTroncal: "Common Mandatory Subjects",
+                subjectTroncalDesc: "Core subjects set by education regulations that all students in this grade must take.",
+                subjectReligion: "Values / Religion Selection",
+                services: "School Extra Services",
+                transporte: "School Bus Service",
+                comedor: "School Canteen Service",
+                ampa: "Join Parents Association (AMPA)",
+                pending: "Pending",
+                faqTitle: "Common Questions",
+                chatHeader: "Local Support Assistant",
+                typing: "Typing...",
+                placeholderChat: "Type your question here...",
+                checklistTitle: "What papers should you prepare?",
+                checkDesc: "Select your family situation to find out exactly what documents you need to scan.",
+                commonDocsTitle: "Mandatory Documents for ALL",
+                commonDocs: [
+                    "Passport-sized photo of the student in digital format (JPG or PNG).",
+                    "National ID / NIE of both legal guardians and the student (mandatory from 14 years old).",
+                    "iANDE Code or Digital Certificate (check Communications in iPASEN app)."
+                ],
+                conditionalDocsTitle: "Documents According to Your Situation",
+                condSeparados: "Court ruling or custody agreement (Mandatory if only one parent signs).",
+                condAlergias: "Official medical report (Essential for special diets in the canteen).",
+                condComedor: "Employment history report (Vida Laboral) and work schedule certificate for both parents.",
+                condDiscapacidad: "Official disability certificate equal to or greater than 33%.",
+                condFamNum: "Valid Large Family / Single Parent Certificate.",
+                condTraslado: "Official Academic Transcript from the student's previous school.",
+                condNone: "No special circumstances selected. You only need to provide the common mandatory documents.",
+                checkSeparados: "Separated or Divorced Parents",
+                checkAlergias: "Allergies or Chronic Diseases",
+                checkComedor: "School Canteen Application",
+                checkDiscapacidad: "Disability Recognized",
+                checkFamNum: "Large Family / Single Parent",
+                checkTraslado: "Transfer from Another School",
+                guideTitle: "Virtual Secretariat Guide",
+                guideDesc: "Step-by-step walkthrough of the official screens.",
+                guide1Title: "1. Access with iANDE",
+                guide1Desc: "Enter the official portal using the student's date of birth and your iANDE code (found in iPASEN).",
+                guide2Title: "2. Personal Details & Photo",
+                guide2Desc: "Verify the contact details of both parents and upload a clear portrait photo of the student.",
+                guide3Title: "3. Subjects & Services Forms",
+                guide3Desc: "Open the forms to rank your electives (using our planner) and apply for the bus or canteen if needed.",
+                guide4Title: "4. School Insurance (Mandatory from 3rd ESO)",
+                guide4Desc: "If the student is enrolling in 3rd ESO or higher, you must pay €1.12 securely with a credit/debit card online.",
+                guide5Title: "5. Signing by SMS Code",
+                guide5Desc: "Preview the PDF draft, enter your mobile phone number to receive a temporary SMS code, sign, and download your receipt.",
+                bannerGuide: "Show Screen Guide",
+                footerText: "MatriAndalucía — Free informational tool for the school community. Not affiliated with the Regional Ministry of Education of Andalusia.",
+                officialPortal: "Official Virtual Secretariat ↗",
+                remainingToOrderMsg: " subjects left to prioritize on the left.",
+                btnProgressPending: "Complete the draft to save",
+                btnProgressReady: "Save as PDF or Print",
+                observacionPrefix: "Notice:",
+                chatWelcome: "Hello! 👋 Welcome to the interactive assistant. Type your question or click on the Common Questions in the left panel.",
+                langLabel: "Language",
+                itineraryLabel: "Itinerary / Track",
+                alertRequired: "You must rank all electives and select mandatory tracks to print.",
+                back: "Language Menu 🌍"
+            },
+            it: {
+                dir: "ltr",
+                welcome: "Benvenuto in MatriAndalucía",
+                selectLang: "Scegli la tua lingua per continuare",
+                navPlanner: "Le Mie Scelte",
+                navChat: "Assistente Virtuale",
+                navCheck: "Documentazione",
+                navGuide: "Passo dopo Passo",
+                deadlineTitle: "Termine per l'iscrizione (ESO e Bachillerato)",
+                deadlineDesc: "Dal 1 al 10 luglio presso la Segreteria Virtuale.",
+                step: "Passo",
+                order: "Ordine",
+                print: "Salva in PDF o Stampa",
+                summaryTitle: "Le Mie Scelte",
+                summaryDesc: "Usa questa scheda come supporto visivo per completare facilmente la domanda ufficiale.",
+                course: "Anno Scolastico",
+                subjectDirigida: "Selezione Obbligatoria del Percorso",
+                subjectOptativa: "Ordina tutte le materie facoltative",
+                subjectOptativaDesc: "⚠️ Obbligatorio in Andalusia: Devi cliccare su tutte le materie nel tuo ordine di preferenza (da quella preferita a quella meno preferita). Se fai un errore, clicca di nuovo su una materia selezionata per deselezionarla.",
+                subjectTroncal: "Materie Obbligatorie Comuni",
+                subjectTroncalDesc: "Materie fondamentali stabilite dalle normative scolastiche che tutti gli studenti di questa classe devono frequentare.",
+                subjectReligion: "Valori / Opzione Religione",
+                services: "Servizi Scolastici Aggiuntivi",
+                transporte: "Servizio Scuolabus",
+                comedor: "Servizio Mensa Scolastica",
+                ampa: "Associazione Genitori (AMPA)",
+                pending: "In attesa",
+                faqTitle: "Domande Frequenti",
+                chatHeader: "Assistente Locale per l'Iscrizione",
+                typing: "Scrivendo...",
+                placeholderChat: "Scrivi qui la tua domanda...",
+                checklistTitle: "Quali documenti devi preparare?",
+                checkDesc: "Seleziona la tua situazione familiare per sapere esattamente quali documenti devi scansionare.",
+                commonDocsTitle: "Documenti Obbligatori per TUTTI",
+                commonDocs: [
+                    "Foto formato tessera dello studente in formato digitale (JPG o PNG).",
+                    "DNI / NIE dei tutori legali e dello studente (obbligatorio a partire dai 14 anni).",
+                    "Codice iANDE o Certificato Digitale (controlla le Comunicazioni nell'app iPASEN)."
+                ],
+                conditionalDocsTitle: "Documenti in Base alla tua Situazione",
+                condSeparados: "Sentenza del tribunale o accordo di affidamento (Obbligatorio se firma un solo genitore).",
+                condAlergias: "Referto medico ufficiale (Essenziale per diete speciali in mensa).",
+                condComedor: "Certificato della storia lavorativa (Vida Laboral) e certificato orario di lavoro di entrambi i genitori.",
+                condDiscapacidad: "Certificato ufficiale di disabilità pari o superiore al 33%.",
+                condFamNum: "Certificato valido di Famiglia Numerosa / Genitore Single.",
+                condTraslado: "Pagella scolastica ufficiale della scuola precedente dello studente.",
+                condNone: "Nessuna circostanza speciale selezionata. È sufficiente fornire i documenti obbligatori comuni.",
+                checkSeparados: "Genitori Separati o Divorziati",
+                checkAlergias: "Allergie o Malattie Croniche",
+                checkComedor: "Domanda Mensa Scolastica",
+                checkDiscapacidad: "Disabilità Riconosciuta",
+                checkFamNum: "Famiglia Numerosa / Genitore Single",
+                checkTraslado: "Trasferimento da un'Altra Scuola",
+                guideTitle: "Guia della Segreteria Virtuale",
+                guideDesc: "Guida passo-passo attraverso le schermate ufficiali.",
+                guide1Title: "1. Accesso con iANDE",
+                guide1Desc: "Accedi al portale ufficiale utilizzando la data di nascita dello studente e il codice iANDE (disponibile in iPASEN).",
+                guide2Title: "2. Dati Personales e Foto",
+                guide2Desc: "Verifica i contatti di entrambi i genitori e carica una foto digitale nitida dello studente.",
+                guide3Title: "3. Moduli Materie e Servizi",
+                guide3Desc: "Apri i moduli per ordinare le materie (usando il nostro pianificatore) e richiedi lo scuolabus o la mensa se necessario.",
+                guide4Title: "4. Assicurazione Scolastica (Obbligatoria da 3º ESO)",
+                guide4Desc: "Se lo studente si iscrive alla terza classe ESO o superiore, devi pagare 1,12 € in modo sicuro online con carta di credito.",
+                guide5Title: "5. Firma tramite Codice SMS",
+                guide5Desc: "Visualizza l'anteprima del PDF, inserisci il tuo numero di cellulare per ricevere un codice SMS temporaneo, firma e scarica la ricevuta.",
+                bannerGuide: "Mostra Guida Schermate",
+                footerText: "MatriAndalucía — Strumento informativo gratuito per la comunità scolastica. Non affiliato con l'Assessorato all'Istruzione dell'Andalusia.",
+                officialPortal: "Segreteria Virtuale Ufficiale ↗",
+                remainingToOrderMsg: " materie rimaste da ordinare a sinistra.",
+                btnProgressPending: "Completa la bozza per salvare",
+                btnProgressReady: "Salva in PDF o Stampa",
+                observacionPrefix: "Nota:",
+                chatWelcome: "Ciao! 👋 Benvenuto nell'assistente interattivo. Scrivi la tua domanda o clicca sulle Domande Frequenti nel pannello di sinistra.",
+                langLabel: "Lingua",
+                itineraryLabel: "Percorso / Indirizzo",
+                alertRequired: "Devi ordinare tutte le materie opzionali e scegliere l'indirizzo obbligatorio per stampare.",
+                back: "Menu Lingue 🌍"
+            },
+            fr: {
+                dir: "ltr",
+                welcome: "Bienvenue sur MatriAndalucía",
+                selectLang: "Choisissez votre langue pour continuer",
+                navPlanner: "Mes Choix",
+                navChat: "Assistant Virtuel",
+                navCheck: "Documents",
+                navGuide: "Étape par Étape",
+                deadlineTitle: "Période d'Inscription (Collège et Lycée)",
+                deadlineDesc: "Du 1er au 10 juillet sur le secrétariat virtuel officiel.",
+                step: "Étape",
+                order: "Ordre",
+                print: "Enregistrer en PDF ou Imprimer",
+                summaryTitle: "Mes Choix",
+                summaryDesc: "Utilisez ce résumé comme support visuel pour remplir facilement l'inscription officielle.",
+                course: "Niveau Scolaire",
+                subjectDirigida: "Choix Dirigé Obligatoire",
+                subjectOptativa: "Classez toutes les matières optionnelles",
+                subjectOptativaDesc: "⚠️ Obligatoire en Andalousie: Vous devez cliquer sur toutes les matières dans votre ordre personnel de préférence (de votre préférée à celle que vous aimez le moins). Si vous faites une erreur, cliquez à nouveau sur la matière sélectionnée pour la désélectionner.",
+                subjectTroncal: "Matières Obligatoires Communes",
+                subjectTroncalDesc: "Matières de tronc commun fixées par la réglementation que tous les élèves doivent suivre à ce niveau.",
+                subjectReligion: "Valeurs / Option de Religion",
+                services: "Services Périscolaires",
+                transporte: "Transport Scolaire (Bus)",
+                comedor: "Cantine Scolaire",
+                ampa: "Adhérer à l'association (AMPA)",
+                pending: "En attente",
+                faqTitle: "Questions Fréquentes",
+                chatHeader: "Assistant Local d'Inscription",
+                typing: "Écrit...",
+                placeholderChat: "Écrivez votre question ici...",
+                checklistTitle: "Quels documents préparer ?",
+                checkDesc: "Cochez votre situation familiale pour obtenir la liste personnalisée des fichiers à numériser.",
+                commonDocsTitle: "Documents obligatoires pour TOUS",
+                commonDocs: [
+                    "Une photo d'identité récente de l'élève au format numérique (JPG ou PNG).",
+                    "DNI / NIE des tuteurs légaux et de l'élève (obligatoire à partir de 14 ans).",
+                    "Le code iANDE ou le Certificat Numérique (consultez vos Messages dans l'application iPASEN)."
+                ],
+                conditionalDocsTitle: "Documents selon votre situation",
+                condSeparados: "Décision de justice ou accord de garde (Obligatoire si un seul parent signe l'inscription).",
+                condAlergias: "Rapport médical officiel (Indispensable pour les régimes spéciaux de la cantine).",
+                condComedor: "Relevé de carrière (Vida Laboral) et justificatif d'horaires de travail pour les deux tuteurs.",
+                condDiscapacidad: "Certificat officiel de handicap égal ou supérieur à 33%.",
+                condFamNum: "Certificat de famille nombreuse ou parent isolé valide.",
+                condTraslado: "Relevé de notes officiel de l'établissement d'origine de l'élève.",
+                condNone: "Aucune situation particulière sélectionnée. Seuls les documents obligatoires communs sont requis.",
+                checkSeparados: "Parents Séparés ou Divorciados",
+                checkAlergias: "Allergies ou Maladies Chroniques",
+                checkComedor: "Demande de Cantine Scolaire",
+                checkDiscapacidad: "Handicap Reconnu",
+                checkFamNum: "Famille Nombreuse / Monoparentale",
+                checkTraslado: "Transfert d'un autre établissement",
+                guideTitle: "Guide du Secrétariat Virtuel",
+                guideDesc: "Parcours guidé des écrans officiels d'inscription.",
+                guide1Title: "1. Connexion avec iANDE",
+                guide1Desc: "Accédez au portail officiel et entrez le code iANDE (reçu dans iPASEN) et la date de naissance de l'élève.",
+                guide2Title: "2. Données Personnelles et Photo",
+                guide2Desc: "Vérifiez les coordonnées des deux parents et téléversez obligatoirement la photo numérique de l'élève.",
+                guide3Title: "3. Choix des Matières et Services",
+                guide3Desc: "Remplissez les formulaires officiels pour classer vos options (avec notre planificateur) et demander le bus ou la cantine.",
+                guide4Title: "4. Assurance Scolaire (Dès la classe de 3º ESO)",
+                guide4Desc: "Si l'élève s'inscrit en 3º ESO ou plus, vous devez payer 1,12 € de manière sécurisée en ligne par carte bancaire.",
+                guide5Title: "5. Signature Électronique par SMS",
+                guide5Desc: "Consultez le brouillon PDF, entrez votre numéro de portable pour recevoir un code temporaire par SMS pour signer et téléchargez votre reçu.",
+                bannerGuide: "Afficher le guide",
+                footerText: "MatriAndalucía — Outil informatif gratuit pour la communauté scolaire. Sans affiliation avec le ministère de l'Éducation d'Andalousie.",
+                officialPortal: "Portail du Secrétariat Virtuel ↗",
+                remainingToOrderMsg: " matières restantes à classer à gauche.",
+                btnProgressPending: "Complétez le brouillon pour enregistrer",
+                btnProgressReady: "Enregistrer en PDF ou Imprimer",
+                observacionPrefix: "Attention:",
+                chatWelcome: "Bonjour! 👋 Bienvenue sur l'assistant d'inscription interactif. Posez-moi une question ou cliquez sur une question fréquente dans le panneau de gauche.",
+                langLabel: "Langue",
+                itineraryLabel: "Parcours / Orientation",
+                alertRequired: "Vous devez classer toutes les options et sélectionner les parcours obligatoires pour pouvoir imprimer.",
+                back: "Menu Langues 🌍"
+            },
+            de: {
+                dir: "ltr",
+                welcome: "Willkommen bei MatriAndalucía",
+                selectLang: "Wählen Sie Ihre Sprache",
+                navPlanner: "Meine Auswahl",
+                navChat: "Virtueller Assistent",
+                navCheck: "Unterlagen",
+                navGuide: "Schritt für Schritt",
+                deadlineTitle: "Anmeldezeitraum (Sekundarstufe & Abitur)",
+                deadlineDesc: "Vom 1. bis 10. Juli über das offizielle virtuelle Sekretariat.",
+                step: "Schritt",
+                order: "Reihenfolge",
+                print: "Als PDF speichern / Drucken",
+                summaryTitle: "Meine Auswahl",
+                summaryDesc: "Nutzen Sie diese Zusammenfassung als visuelle Hilfe für das offizielle Online-Verfahren.",
+                course: "Jahrgangsstufe",
+                subjectDirigida: "Pflichtwahlbereich",
+                subjectOptativa: "Wahlfächer nach Präferenz ordnen",
+                subjectOptativaDesc: "⚠️ In Andalusien obligatorisch: Sie müssen alle Fächer nach Ihrer persönlichen Präferenz anklicken (vom am meisten bis zum am wenigsten gewünschten). Falls Sie einen Fehler machen, klicken Sie erneut auf das Fach, um es abzuwählen.",
+                subjectTroncal: "Gemeinsame Pflichtfächer",
+                subjectTroncalDesc: "Gesetzlich vorgeschriebene Kernfächer, die alle Schüler dieser Stufe gemeinsam belegen müssen.",
+                subjectReligion: "Ethik / Religionsunterricht",
+                services: "Schulische Zusatzdienste",
+                transporte: "Schulbus",
+                comedor: "Schulkantine",
+                ampa: "Elternverein beitreten (AMPA)",
+                pending: "Ausstehend",
+                faqTitle: "Häufige Fragen",
+                chatHeader: "Lokaler Anmelde-Assistent",
+                typing: "Schreibt...",
+                placeholderChat: "Frage hier eingeben...",
+                checklistTitle: "Welche Unterlagen müssen vorbereitet werden?",
+                checkDesc: "Wählen Sie Ihre familiäre Situation aus, um zu sehen, welche Dokumente Sie einscannen müssen.",
+                commonDocsTitle: "Pflichtunterlagen für ALLE",
+                commonDocs: [
+                    "Ein digitales Passbild des Schülers im Format JPG oder PNG.",
+                    "DNI / NIE der Erziehungsberechtigten und des Schülers (Pflicht ab 14 Jahren).",
+                    "Der iANDE-Code oder das digitale Zertifikat (siehe Mitteilungen in der iPASEN-App)."
+                ],
+                conditionalDocsTitle: "Dokumente je nach Ihrer Situation",
+                condSeparados: "Gerichtliches Urteil oder Sorgerechtsvereinbarung (Pflicht, wenn nur ein Elternteil unterzeichnet).",
+                condAlergias: "Offizieller medizinischer Bericht (Unverzichtbar für spezielle Diäten in der Kantine).",
+                condComedor: "Arbeitslebensnachweis (Vida Laboral) und Arbeitszeitbescheinigung beider Erziehungsberechtigten.",
+                condDiscapacidad: "Offizielle Behindertenbescheinigung ab einem Grad von 33 %.",
+                condFamNum: "Gültiger Großfamilien- oder Alleinerziehendenausweis.",
+                condTraslado: "Offizielles Notenzeugnis der vorherigen Schule des Schülers.",
+                condNone: "Keine besonderen Umstände ausgewählt. Sie müssen nur die üblichen Pflichtdokumente einreichen.",
+                checkSeparados: "Geschiedene oder getrennt lebende Eltern",
+                checkAlergias: "Allergien oder chronische Krankheiten",
+                checkComedor: "Anmeldung zur Schulkantine",
+                checkDiscapacidad: "Anerkannte Behinderung",
+                checkFamNum: "Großfamilie / Alleinerziehend",
+                checkTraslado: "Schulwechsel von einer anderen Schule",
+                guideTitle: "Leitfaden für das virtuelle Sekretariat",
+                guideDesc: "Schritt-für-Schritt-Anleitung durch die offiziellen Bildschirme.",
+                guide1Title: "1. Anmeldung mit iANDE",
+                guide1Desc: "Rufen Sie das Portal auf und geben Sie das Geburtsdatum des Schülers sowie Ihren iANDE-Code ein.",
+                guide2Title: "2. Persönliche Daten & Foto",
+                guide2Desc: "Überprüfen Sie die Kontaktdaten beider Elternteile und laden Sie das digitale Schülerfoto hoch.",
+                guide3Title: "3. Fächer- und Diensteauswahl",
+                guide3Desc: "Füllen Sie die Formulare aus, um Ihre Wahlfächer zu ordnen (mit unserem Planer) und den Bus oder die Kantine zu beantragen.",
+                guide4Title: "4. Schülerversicherung (Pflicht ab der 3º ESO)",
+                guide4Desc: "Wenn sich der Schüler für die 3. Stufe der ESO oder höher anmeldet, müssen 1,12 € sicher online per Karte bezahlt werden.",
+                guide5Title: "5. Elektronische Signatur per SMS",
+                guide5Desc: "Prüfen Sie den PDF-Entwurf, geben Sie Ihre Mobilfunknummer ein, um den SMS-Code zu erhalten, zeichnen Sie ab und laden Sie die Quittung herunter.",
+                bannerGuide: "Leitfaden anzeigen",
+                footerText: "MatriAndalucía — Kostenloses Informationstool für die Schulgemeinschaft. Keine Verbindung zum andalusischen Bildungsministerium.",
+                officialPortal: "Offizielles virtuelles Sekretariat ↗",
+                remainingToOrderMsg: " Fächer übrig zum Ordnen auf der linken Seite.",
+                btnProgressPending: "Entwurf vervollständigen zum Speichern",
+                btnProgressReady: "Als PDF speichern oder Drucken",
+                observacionPrefix: "Hinweis:",
+                chatWelcome: "Hallo! 👋 Willkommen beim interaktiven Anmeldehelfer. Stellen Sie Ihre Frage oder klicken Sie links auf eine der häufigen Fragen.",
+                langLabel: "Sprache",
+                itineraryLabel: "Zweig / Schwerpunkt",
+                alertRequired: "Sie müssen alle Wahlfächer ordnen und den Pflichtzweig wählen, um drucken zu können.",
+                back: "Sprachenmenü 🌍"
+            },
+            ar: {
+                dir: "rtl",
+                welcome: "مرحباً بكم في MatriAndalucía",
+                selectLang: "اختر لغتك للمتابعة",
+                navPlanner: "اختياراتي",
+                navChat: "المساعد الافتراضي",
+                navCheck: "الوثائق المطلوبة",
+                navGuide: "خطوة بخطوة",
+                deadlineTitle: "فترة التسجيل (المرحلة الثانوية والبكالوريا)",
+                deadlineDesc: "من 1 إلى 10 يوليو عبر الأمانة الافتراضية الرسمية.",
+                step: "الخطوة",
+                order: "الترتيب",
+                print: "حفظ بصيغة PDF أو طباعة",
+                summaryTitle: "ملخص اختياراتي",
+                summaryDesc: "استخدم ورقة التلخيص هذه كمساعد بصري لإكمال طلبك الرسمي عبر الإنترنت بسهولة.",
+                course: "السنة الدراسية",
+                subjectDirigida: "الخيار الإجباري الموجه",
+                subjectOptativa: "ترتيب جميع المواد الاختيارية",
+                subjectOptativaDesc: "⚠️ إلزامي في أندلسيا: يجب النقر على جميع المواد وفقاً لترتيب رغباتك الشخصي (من الأكثر تفضيلاً إلى الأقل). إذا أخطأت، انقر على المادة المحددة مرة أخرى لإلغاء تحديدها وإعادة الترتيب.",
+                subjectTroncal: "المواد الإجبارية المشتركة",
+                subjectTroncalDesc: "المواد الأساسية المقررة بموجب القوانين التعليمية التي يجب على جميع طلاب هذا المستوى دراستها بشكل مشترك.",
+                subjectReligion: "القيم الأخلاقية / خيار الديانة",
+                services: "الخدمات الإضافية للمدرسة",
+                transporte: "خدمة النقل المدرسي (الحافلة)",
+                comedor: "خدمة المقصف المدرسي",
+                ampa: "الانضمام إلى جمعية أولياء الأمور (AMPA)",
+                pending: "قيد الانتظar",
+                faqTitle: "الأسئلة الشائعة",
+                chatHeader: "مساعد الدعم المحلي للتسجيل",
+                typing: "يكتب الآن...",
+                placeholderChat: "اكتب سؤالك هنا...",
+                checklistTitle: "ما هي الأوراق التي يجب إعدادها؟",
+                checkDesc: "اختر وضعك العائلي لمعرفة الوثائق التي يتعين عليك مسحها ضوئياً بالضبط.",
+                commonDocsTitle: "الوثائق الإلزامية للجميع دون استثناء",
+                commonDocs: [
+                    "صورة شخصية حديثة للطالب مقاس صورة جواز السفر بتنسيق رقمي (JPG أو PNG).",
+                    "بطاقة الهوية الوطنية أو رقم هوية الأجنبي (NIE) للوالدين وللطالب (إلزامي لمن بلغ 14 عاماً فما فوق).",
+                    "رمز iANDE أو الشهادة الرقمية (يرجى التحقق من الرسائل في تطبيق iPASEN)."
+                ],
+                conditionalDocsTitle: "الوثائق الإضافية المطلوبة حسب الحالة",
+                condSeparados: "حكم المحكمة أو اتفاقية الحضانة (إلزامي إذا وقع أحد الوالدين فقط على الطلب).",
+                condAlergias: "تقرير طبي رسمي (ضروري للحصول على وجبات غذائية خاصة في المقصف المدرسي).",
+                condComedor: "تقرير السجل المهني (Vida Laboral) وشهادة ساعات العمل لكلا الوالدين.",
+                condDiscapacidad: "شهادة إعاقة رسمية بنسبة تعادل أو تفوق 33%.",
+                condFamNum: "شهادة عائلة كبيرة أو عائلة المعيل الواحد سارية المفعول.",
+                condTraslado: "السجل الأكاديمي الرسمي من المدرسة السابقة للطالب.",
+                condNone: "لم تقم بتحديد أي حالات خاصة. يتطلب منك فقط تقديم المستندات الإلزامية العامة.",
+                checkSeparados: "الوالدان منفصلان أو مطلقان",
+                checkAlergias: "الحساسية أو الأمراض المزمنة",
+                checkComedor: "طلب المقصف المدرسي",
+                checkDiscapacidad: "إعاقة معترف بها",
+                checkFamNum: "عائلة كبيرة / عائل واحد",
+                checkTraslado: "الانتقال من مدرسة أخرى",
+                guideTitle: "دليل الأمانة الافتراضية للمستندات",
+                guideDesc: "شرح تفصيلي خطوة بخطوة للشاشات الرسمية.",
+                guide1Title: "1. الدخول باستخدام iANDE",
+                guide1Desc: "ادخل إلى البوابة الرسمية باستخدام تاريخ ميلاد الطالب ورمز iANDE الخاص بك (الموجود في تطبيق iPASEN).",
+                guide2Title: "2. البيانات الشخصية والصورة",
+                guide2Desc: "تحقق من بيانات الاتصال لكلا الوالدين وقم بتحميل صورة بورتريه واضحة وحديثة للطالب.",
+                guide3Title: "3. نماذج المواد والخدمات",
+                guide3Desc: "افتح النماذج لترتيب المواد الاختيارية (باستخدام المخطط الخاص بنا) وطلب الحافلة أو المقصف إذا لزم الأمر.",
+                guide4Title: "4. التأمين المدرسي (إلزامي من الصف الثالث ESO فما فوق)",
+                guide4Desc: "إذا كان الطالب يسجل في الصف الثالث من مرحلة ESO أو أعلى، فيجب دفع 1.12 يورو بشكل آمن عبر الإنترنت باستخدام بطاقة الائتمان.",
+                guide5Title: "5. التوقيع باستخدام رمز SMS",
+                guide5Desc: "قم بمعاينة مسودة PDF، وأدخل رقم هاتفك المحمول لتلقي رمز SMS مؤقت، ثم قم بالتوقيع وتنزيل إيصال الاستلام.",
+                bannerGuide: "عرض دليل الشاشات",
+                footerText: "MatriAndalucía — أداة إعلامية مجانية للمجتمع المدرسي. غير تابعة لوزارة التربية والتنمية التعليمية في أندلسيا.",
+                officialPortal: "الأمانة الافتراضية الرسمية ↗",
+                remainingToOrderMsg: " مادة متبقية للتحديد على اليسار.",
+                btnProgressPending: "أكمل المسودة للحفظ والتنزيل",
+                btnProgressReady: "حفظ بصيغة PDF أو طباعة",
+                observacionPrefix: "ملاحظة:",
+                chatWelcome: "مرحباً! 👋 يسعدني مساعدتك اليوم. اكتب سؤالك أو انقر على الأسئلة الشائعة في القائمة الجانبية.",
+                langLabel: "اللغة",
+                itineraryLabel: "المسار الدراسي / الفرع",
+                alertRequired: "يجب عليك ترتيب جميع المواد الاختيارية واختيار المسار الإجباري للتمكن من الطباعة.",
+                back: "قائمة اللغات 🌍"
+            },
+            zh: {
+                dir: "ltr",
+                welcome: "欢迎来到 MatriAndalucía",
+                selectLang: "请选择您的语言以继续",
+                navPlanner: "我的选择",
+                navChat: "虚拟助手",
+                navCheck: "文件材料",
+                navGuide: "分步指南",
+                deadlineTitle: "报名及注册期限（初中与高中阶段）",
+                deadlineDesc: "请于7月1日至10日之间在官方虚拟秘书处完成操作。",
+                step: "步骤",
+                order: "排序",
+                print: "保存为 PDF 或打印",
+                summaryTitle: "我的选择摘要",
+                summaryDesc: "您可将此摘要作为参考，以便在官方系统上快速准确地完成注册。",
+                course: "当前学年",
+                subjectDirigida: "核心分流方向必选",
+                subjectOptativa: "对所有选修科目进行排序",
+                subjectOptativaDesc: "⚠️ 安达卢西亚注册必读：您必须点击列表中的所有科目，将其按照您的个人喜好和意愿从最想读到最不想读依次进行完整排序。若点选错误，可再次点击该科目以取消选择并重新排序。",
+                subjectTroncal: "公共必修科目",
+                subjectTroncalDesc: "教育法规规定的所有该年级学生都必须修读的基础核心课程。",
+                subjectReligion: "道德与伦理 / 宗教选项",
+                services: "学校配套及补充服务",
+                transporte: "校车服务",
+                comedor: "学校食堂服务",
+                ampa: "加入家长协会 (AMPA)",
+                pending: "等待中",
+                faqTitle: "常见问题",
+                chatHeader: "本地注册支持助手",
+                typing: "正在输入...",
+                placeholderChat: "请在此输入您的问题...",
+                checklistTitle: "您需要准备哪些文件材料？",
+                checkDesc: "勾选您的家庭基本状况，系统将为您量身定制所需扫描上传的材料清单。",
+                commonDocsTitle: "所有注册人均须提供的必备材料",
+                commonDocs: [
+                    "学生近期免冠彩色证件照电子版（JPG 或 PNG 格式）。",
+                    "法定监护人及学生的身份证件（DNI/NIE）（学生满14周岁必须提供其个人证件）。",
+                    "iANDE 授权码或数字证书（可在手机 iPASEN 软件的“通知/Comunicaciones”栏目中查找）。"
+                ],
+                conditionalDocsTitle: "根据您的具体家庭状况需要补充的材料",
+                condSeparados: "法院离婚判决书 or 抚养权协议（若仅有一方监护人签字注册则为必交件）。",
+                condAlergias: "官方医学诊断报告（若需要在学校食堂提供特殊饮食或餐食，则为必交件）。",
+                condComedor: "双方监护人的社保工作履历报告（Vida Laboral）以及工作时间证明文件。",
+                condDiscapacidad: "官方出具的等于或大于33%的残疾等级证明文件。",
+                condFamNum: "处于有效期内的多子家庭（Familia Numerosa）或单亲家庭证明文件。",
+                condTraslado: "学生原就读学校开具的官方学习及成绩证明材料。",
+                condNone: "未选择任何特殊情况。您只需提供常规的必备公共材料即可。",
+                checkSeparados: "父母离异或分居",
+                checkAlergias: "过敏或慢性疾病史",
+                checkComedor: "申请学校食堂服务",
+                checkDiscapacidad: "持有残疾证明",
+                checkFamNum: "多子家庭 / 单亲家庭",
+                checkTraslado: "外校转入或插班",
+                guideTitle: "虚拟秘书处系统操作指南",
+                guideDesc: "分步骤带您预览和熟悉官方注册系统界面。",
+                guide1Title: "1. 通过 iANDE 码登录系统",
+                guide1Desc: "使用学生生日及您的个人 iANDE 码（可在 iPASEN 中找到）登录安达卢西亚官方教育注册平台。",
+                guide2Title: "2. 核对个人及监护人信息",
+                guide2Desc: "仔细核对双方监护人的联系电话，并按要求上传一张清晰的学生彩色证件照。",
+                guide3Title: "3. 填报科目与补充服务",
+                guide3Desc: "进入选课页面对所有选修课进行排序（可参考本工具的草稿），并勾选是否申请校车或学校食堂。",
+                guide4Title: "4. 缴纳学生保险费（初三 3º ESO 及以上阶段必交）",
+                guide4Desc: "若学生就读初中三年级或更高年级，系统将引导您通过银行卡安全在线支付约1.12欧元的学生保险费。",
+                guide5Title: "5. 手机短信验证码签字提交",
+                guide5Desc: "预览最终生成的 PDF 注册草稿并核对无误后，点击签字。您绑定的手机将收到一条免费短信验证码，输入后即完成注册并可下载凭证。",
+                bannerGuide: "查看系统截图指引",
+                footerText: "MatriAndalucía — 为学校社群提供的免费公益信息参考工具，与安达卢西亚教育与职业培训部无官方关联。",
+                officialPortal: "官方虚拟秘书处入口 ↗",
+                remainingToOrderMsg: " 个科目仍未排序（请在左侧点击完成）。",
+                btnProgressPending: "请在左侧完成所有排序以保存",
+                btnProgressReady: "保存为 PDF 或打印",
+                observacionPrefix: "请注意:",
+                chatWelcome: "您好！👋 欢迎使用智能注册助手。您可以在下方输入问题，或点击左侧面板的常见问题快速获得解答。",
+                langLabel: "语言设定",
+                itineraryLabel: "修读方向 / 班型分流",
+                alertRequired: "您必须先在左侧对所有选修课进行排序并选择对应班型，才能生成和打印文件。",
+                back: "语言菜单 🌍"
+            },
+            ru: {
+                dir: "ltr",
+                welcome: "Добро пожаловать в MatriAndalucía",
+                selectLang: "Выберите язык для продолжения",
+                navPlanner: "Мой Выбор",
+                navChat: "Виртуальный Помощник",
+                navCheck: "Документация",
+                navGuide: "Шаг за Шагом",
+                deadlineTitle: "Сроки регистрации (ESO и Bachillerato)",
+                deadlineDesc: "С 1 по 10 июля в официальном Виртуальном секретариате.",
+                step: "Шаг",
+                order: "Порядок",
+                print: "Сохранить в PDF или Печать",
+                summaryTitle: "Мой Выбор",
+                summaryDesc: "Используйте этот сводный лист в качестве визуальной подсказки для легкого заполнения официальной заявки.",
+                course: "Учебный Год",
+                subjectDirigida: "Обязательный Выбор Направления",
+                subjectOptativa: "Упорядочите все выборные предметы",
+                subjectOptativaDesc: "⚠️ Обязательно в Андалусии: Вы должны нажать на все предметы в вашем личном порядке предпочтения (от самого любимого до наименее предпочтительного). Если вы ошиблись, нажмите на выбранный предмет еще раз, чтобы отменить выбор.",
+                subjectTroncal: "Обязательные Общие Предметы",
+                subjectTroncalDesc: "Основные учебные дисциплины, установленные стандартами образования, которые должны изучать все учащиеся этого класса.",
+                subjectReligion: "Этика / Опция Религии",
+                services: "Дополнительные Школьные Услуги",
+                transporte: "Школьный Автобус",
+                comedor: "Школьная Столовая",
+                ampa: "Вступить в Ассоциацию Родителей (AMPA)",
+                pending: "В ожидании",
+                faqTitle: "Частые Вопросы",
+                chatHeader: "Локальный Помощник по Регистрации",
+                typing: "Печатает...",
+                placeholderChat: "Напишите ваш вопрос здесь...",
+                checklistTitle: "Какие документы вам нужно подготовить?",
+                checkDesc: "Выберите вашу семейную ситуацию, чтобы узнать точно, какие документы вам нужно отсканировать.",
+                commonDocsTitle: "Обязательные Документы для ВСЕХ",
+                commonDocs: [
+                    "Цветная фотография ученика паспортного формата в цифровом виде (JPG или PNG).",
+                    "DNI / NIE обоих родителей и самого ученика (обязательно для детей от 14 лет и старше).",
+                    "Код iANDE или Цифровой сертификат (проверьте сообщения в приложении iPASEN)."
+                ],
+                conditionalDocsTitle: "Документы в Зависимости от Вашей Ситуации",
+                condSeparados: "Решение суда или соглашение об опеке (Обязательно, если подпись ставит только один родитель).",
+                condAlergias: "Официальное медицинское заключение (Необходимо для организации специального питания).",
+                condComedor: "Отчет о трудовой деятельности (Vida Laboral) и справка о графике работы обоих родителей.",
+                condDiscapacidad: "Официальное свидетельство об инвалидности 33% или более.",
+                condFamNum: "Действующее удостоверение многодетной семьи или родителя-одиночки.",
+                condTraslado: "Официальное свидетельство об успеваемости из предыдущей школы.",
+                condNone: "Особые обстоятельства не выбраны. Вам нужно предоставить только общие обязательные документы.",
+                checkSeparados: "Родители в разводе или разъезде",
+                checkAlergias: "Аллергии или хронические заболевания",
+                checkComedor: "Заявка на школьное питание",
+                checkDiscapacidad: "Подтвержденная инвалидность",
+                checkFamNum: "Многодетная / Неполная семья",
+                checkTraslado: "Перевод из другой школы",
+                guideTitle: "Руководство по Виртуальному Секретариату",
+                guideDesc: "Пошаговый разбор официальных экранов системы.",
+                guide1Title: "1. Авторизация по коду iANDE",
+                guide1Desc: "Войдите на официальный портал, используя дату рождения ученика и ваш код iANDE (доступен в iPASEN).",
+                guide2Title: "2. Личные данные и Фото",
+                guide2Desc: "Проверьте контактную информацию обоих родителей и загрузите четкую портретную фотографию ученика.",
+                guide3Title: "3. Выбор Предметов и Услуг",
+                guide3Desc: "Заполните формы для упорядочивания выборных предметов (по нашему шаблону) и запросите автобус или столовую при необходимости.",
+                guide4Title: "4. Школьная страховка (Обязательна с 3-го класса ESO)",
+                guide4Desc: "Если ученик поступает в 3-й класс ESO или старше, вы должны безопасно оплатить картой сбор в размере 1,12 евро.",
+                guide5Title: "5. Подписание через код из SMS",
+                guide5Desc: "Просмотрите черновик PDF, введите номер телефона для получения временного SMS-кода, подпишите и скачайте квитанцию.",
+                bannerGuide: "Показать Скриншоты Инструкции",
+                footerText: "MatriAndalucía — Бесплатный справочный инструмент для школьного сообщества. Не связан с Министерством образования Андалусии.",
+                officialPortal: "Официальный виртуальный секретариат ↗",
+                remainingToOrderMsg: " предметов осталось упорядочить в левой колонке.",
+                btnProgressPending: "Заполните черновик для сохранения",
+                btnProgressReady: "Сохранить в PDF или Печать",
+                observacionPrefix: "Обратите внимание:",
+                chatWelcome: "Здравствуйте! 👋 Рад приветствовать вас. Напишите ваш вопрос или выберите одну из частых тем на панели слева.",
+                langLabel: "Язык интерфейса",
+                itineraryLabel: "Учебный профиль / Направление",
+                alertRequired: "Для печати необходимо распределить приоритеты всех предметов и выбрать профиль обучения.",
+                back: "Меню Языков 🌍"
+            },
+            uk: {
+                dir: "ltr",
+                welcome: "Ласкаво просимо до MatriAndalucía",
+                selectLang: "Виберіть мову для продовження",
+                navPlanner: "Мій Вибір",
+                navChat: "Віртуальний Помічник",
+                navCheck: "Документація",
+                navGuide: "Крок за Кроком",
+                deadlineTitle: "Терміни реєстрації (ESO та Bachillerato)",
+                deadlineDesc: "З 1 по 10 липня в офіційному Віртуальному секретаріаті.",
+                step: "Крок",
+                order: "Порядок",
+                print: "Зберегти в PDF або Друк",
+                summaryTitle: "Мій Вибір",
+                summaryDesc: "Використовуйте цей зведений лист як візуальну підказку для легкого заповнення офіційної заявки.",
+                course: "Навчальний Рік",
+                subjectDirigida: "Обов'язковий Вибір Напрямку",
+                subjectOptativa: "Упорядкуйте всі вибіркові предмети",
+                subjectOptativaDesc: "⚠️ Обов'язково в Андалусії: Ви повинні натиснути на всі предмети у вашому особистому порядку переваги (від найулюбленішого до найменш бажаного). Якщо ви помилилися, натисніть на вибраний предмет ще раз, щоб скасувати вибір.",
+                subjectTroncal: "Обов'язкові Спільні Предмети",
+                subjectTroncalDesc: "Основні навчальні дисципліни, встановлені стандартами освіти, які мають вивчати всі учні цього класу.",
+                subjectReligion: "Етика / Опція Релігії",
+                services: "Додаткові Шкільні Послуги",
+                transporte: "Шкільний Автобус",
+                comedor: "Шкільна Їдальня",
+                ampa: "Вступити до Асоціації Батьків (AMPA)",
+                pending: "В очікуванні",
+                faqTitle: "Часті Запитання",
+                chatHeader: "Локальний Помічник з Реєстрації",
+                typing: "Пише...",
+                placeholderChat: "Напишіть ваше запитання тут...",
+                checklistTitle: "Які документи вам потрібно підготувати?",
+                checkDesc: "Виберіть вашу сімейну ситуацію, щоб дізнатися точно, які документи вам потрібно відсканувати.",
+                commonDocsTitle: "Обов'язкові Документи для ВСІХ",
+                commonDocs: [
+                    "Кольорова фотографія учня паспортного формату в цифровому вигляді (JPG або PNG).",
+                    "DNI / NIE обох батьків та самого учня (обов'язково для дітей від 14 років і старше).",
+                    "Код iANDE або Цифровий сертифікат (перевірте повідомлення у додатку iPASEN)."
+                ],
+                conditionalDocsTitle: "Документи в Залежності від Вашої Ситуації",
+                condSeparados: "Рішення суду або угода про опеку (Обов'язково, якщо підпис ставить лише один із батьків).",
+                condAlergias: "Офіційний медичний висновок (Необхідно для організації спеціального харчування).",
+                condComedor: "Звіт про трудову діяльність (Vida Laboral) та довідка про графік роботи обох батьків.",
+                condDiscapacidad: "Офіційне свідоцтво про інвалідність 33% або більше.",
+                condFamNum: "Дійсне посвідчення багатодітної сім'ї або батька-одинака.",
+                condTraslado: "Офіційне свідоцтво про успішність із попередньої школи.",
+                condNone: "Особливі обставини не вибрані. Вам потрібно надати лише загальні обов'язкові документи.",
+                checkSeparados: "Батьки розлучені чи проживають окремо",
+                checkAlergias: "Алергії або хронічні захворювання",
+                checkComedor: "Заявка на шкільне харчування",
+                checkDiscapacidad: "Підтверджена інвалідність",
+                checkFamNum: "Багатодітна / Неповна сім'я",
+                checkTraslado: "Переведення з іншої школи",
+                guideTitle: "Посібник з Віртуального Секретаріату",
+                guideDesc: "Покроковий аналіз офіційних екранів системи.",
+                guide1Title: "1. Авторизація за кодом iANDE",
+                guide1Desc: "Увійдіть на офіційний портал, використовуючи дату народження учня та ваш код iANDE (доступний в iPASEN).",
+                guide2Title: "2. Особисті дані та Фото",
+                guide2Desc: "Перевірте контактну інформацію обох батьків та завантажте чітку портретну фотографію учня.",
+                guide3Title: "3. Вибір Предметів та Послуг",
+                guide3Desc: "Заповніть форми для впорядкування вибіркових предметів (за нашим шаблоном) та запросіть автобус чи їдальню за потреби.",
+                guide4Title: "4. Школьна страховка (Обов'язкова з 3-го класу ESO)",
+                guide4Desc: "Якщо учень вступає до 3-го класу ESO або старше, ви повинні безпечно оплатити карткою збір у розмірі 1,12 євро.",
+                guide5Title: "5. Підписання через код з SMS",
+                guide5Desc: "Перегляньте чернетку PDF, введіть номер телефону для отримання тимчасового SMS-коду, підпишіть та скачайте квитанцію.",
+                bannerGuide: "Показати Скриншоти Інструкції",
+                footerText: "MatriAndalucía — Безкоштовний довідковий інструмент для шкільної спільноти. Не пов'язаний з Міністерством освіти Андалусії.",
+                officialPortal: "Офіційний віртуальний секретар ↗",
+                remainingToOrderMsg: " предметів залишилося впорядкувати в лівій колонці.",
+                btnProgressPending: "Заповніть чернетку для збереження",
+                btnProgressReady: "Зберегти в PDF або Друк",
+                observacionPrefix: "Зверніть увагу:",
+                chatWelcome: "Вітаю! 👋 Радий допомогти вам. Напишіть ваше запитання або виберіть одну з частих тем на засланні ліворуч.",
+                langLabel: "Мова інтерфейсу",
+                itineraryLabel: "Навчальний профіль / Напрямок",
+                alertRequired: "Для друку необхідно розподілити пріоритети всіх предметів та обрати профіль навчання.",
+                back: "Меню Мов 🌍"
+            }
+        };
+
+        // --- DATOS DE ASIGNATURAS POR IDIOMA (Estructura LOMLOE Andalucía) ---
+        const getCoursesData = (lang) => {
+            const isEs = lang === 'es';
+            const isEn = lang === 'en';
+            const isFr = lang === 'fr';
+            const isDe = lang === 'de';
+            const isIt = lang === 'it';
+            const isAr = lang === 'ar';
+            const isZh = lang === 'zh';
+            const isRu = lang === 'ru';
+            const isUk = lang === 'uk';
+
+            return {
+                '1eso': {
+                    name: isEs ? '1º de ESO' : isEn ? 'Year 7 (1º ESO)' : isIt ? '1º Anno ESO' : isFr ? 'Classe de 5ème (1º ESO)' : isDe ? '7. Klasse (ESO)' : isAr ? 'الصف الأول من التعليم الثانوي' : isZh ? '初中一年级' : '1-й курс ESO',
+                    troncales: isEs ? 
+                        ['Lengua Castellana y Literatura', 'Matemáticas', 'Geografía e Historia', 'Biología y Geología', 'Inglés (1ª Lengua)', 'Educación Física', 'Educación Plástica y Visual'] :
+                        isEn ? 
+                        ['Spanish Language', 'Mathematics', 'Geography & History', 'Biology & Geology', 'English (1st Language)', 'Physical Ed.', 'Visual Arts'] :
+                        isIt ?
+                        ['Lingua Spagnola', 'Matematica', 'Geografia e Storia', 'Biologia e Geologia', 'Inglese (1ª Lingua)', 'Educazione Fisica', 'Arte e Disegno'] :
+                        isFr ?
+                        ['Langue Espagnole', 'Mathématiques', 'Géographie & Histoire', 'Biologie & Géologie', 'Anglais (1ère Langue)', 'Éducation Physique', 'Arts Plastiques'] :
+                        isDe ?
+                        ['Spanische Sprache & Lit.', 'Mathematik', 'Geographie & Geschichte', 'Biologie & Geologie', 'Englisch (1. Fremdsprache)', 'Sport', 'Kunst'] :
+                        isAr ?
+                        ['اللغة الإسبانية وآدابها', 'الرياضيات', 'الجغرافيا والتاريخ', 'علم الأحياء والجيولوجيا', 'اللغة الإنجليزية', 'التربية البدنية', 'التربية الفنية والتشكيلية'] :
+                        isZh ?
+                        ['西班牙语语言与文学', '数学', '地理与历史', '生物与地质', '英语（第一外语）', '体育', '美术与视觉教育'] :
+                        ['Испанский язык', 'Математика', 'География и История', 'Биология и Геология', 'Английский язык', 'Физкультура', 'Изобразительное искусство'],
+                    dirigidas: [{ 
+                        id: 'segunda_lengua',
+                        title: isEs ? 'Segunda Lengua Extranjera (Elegir una)' : isEn ? 'Second Foreign Language (Choose one)' : isFr ? 'Deuxième Langue Étrangère (Choisissez-en une)' : isDe ? 'Zweite Fremdsprache (Wählen Sie eine)' : isIt ? 'Seconda Lingua Straniera (Scegline una)' : isAr ? 'اللغة الأجنبية الثانية (اختر واحدة)' : isZh ? '第二外语选择' : 'Вторая иностранная (выберите одну)',
+                        desc: isEs ? 'Materia obligada por normativa andaluza en este nivel:' : isEn ? 'Mandatory subject in Andalusia for this grade:' : isFr ? 'Matière obligatoire en Andalousie à ce niveau:' : isDe ? 'Pflichtfach in Andalusien für diese Jahrgangsstufe:' : isIt ? 'Materia obbligatoria in Andalusia per questo livello:' : isAr ? 'مادة إجبارية بموجب اللوائح التعليمية في أندلسيا في هذا المستوى:' : isZh ? '根据安达卢西亚教育法规，该阶段必选科目：' : 'Обязательный предмет по законам Андалусии на этом этапе:',
+                        options: [
+                            { 
+                                name: isEs ? 'Francés' : isEn ? 'French' : isFr ? 'Français' : isDe ? 'Französisch' : isIt ? 'Francese' : isAr ? 'الفرنسية' : isZh ? '法语' : 'Французский / Французька', 
+                                desc: isEs ? 'Iniciación al idioma y cultura francófona.' : isEn ? 'Intro to the language and French culture.' : isFr ? 'Initiation à la langue et culture française.' : isDe ? 'Einführung in die Sprache und Kultur.' : isIt ? 'Introduzione alla lingua e alla cultura francese.' : isAr ? 'مبادئ اللغة والثقافة الفرنسية.' : isZh ? '法语语言与文化入门。' : 'Введение в язык и франкоязычную культуру.' 
+                            },
+                            { 
+                                name: isEs ? 'Alemán' : isEn ? 'German' : isFr ? 'Allemand' : isDe ? 'Deutsch' : isIt ? 'Tedesco' : isAr ? 'الألمانية' : isZh ? '德语' : 'Немецкий / Німецька', 
+                                desc: isEs ? 'Iniciación al idioma y fonética alemana.' : isEn ? 'Intro to the German language and phonetics.' : isFr ? 'Initiation à la langue allemande.' : isDe ? 'Einführung in die deutsche Sprache.' : isIt ? 'Introduzione alla lingua e alla fonetica tedesca.' : isAr ? 'مبادئ اللغة الألمانية والنطق.' : isZh ? '德语发音与基本结构入门。' : 'Введение в язык и немецкую фонетику.' 
+                            }
+                        ]
+                    }],
+                    optativas: [
+                        { 
+                            name: isEs ? 'Oratoria y Debate' : isEn ? 'Public Speaking & Debating' : isFr ? 'Art Oratoire et Débat' : isDe ? 'Rhetorik & Debattieren' : isIt ? 'Rhetorica e Dibattito' : isAr ? 'الخطابة والمناظرة' : isZh ? '演讲与辩论技巧' : 'Риторика и Дебаты / Риторика та дебати', 
+                            desc: isEs ? 'Técnicas eficaces para hablar en público.' : isEn ? 'Public speaking and argumentative skills.' : isFr ? 'Techniques pour s\'exprimer en public.' : isDe ? 'Effektive Techniken für öffentliches Sprechen.' : isIt ? 'Tecniche efficaci per parlare in pubblico.' : isAr ? 'تقنيات التعبير والخطابة والحوار أمام الجمهور.' : isZh ? '学习如何在公众面前自信表达及组织论点。' : 'Эффективные техники публичных выступлений и аргументации.' 
+                        },
+                        { 
+                            name: isEs ? 'Computación y Robótica' : isEn ? 'Computing & Robotics' : isFr ? 'Informatique et Robotique' : isDe ? 'Informatik & Robotik' : isIt ? 'Informatica e Robotica' : isAr ? 'الروبوتات والتكنولوجيا' : isZh ? '计算机与机器人编程' : 'Робототехника и Кодинг / Робототехніка та кодування', 
+                            desc: isEs ? 'Programación visual por bloques y robots.' : isEn ? 'Visual block coding and basic robotics.' : isFr ? 'Codage visuel par blocs et robots.' : isDe ? 'Visuelle Blockprogrammierung und Robotik.' : isIt ? 'Programmazione visuale a blocchi e robotica.' : isAr ? 'البرمجة المرئية وتصميم الروبوتات البسيطة.' : isZh ? '学习可视化图形编程与微型机器人设计。' : 'Визуальное программирование блоков и основы робототехники.' 
+                        },
+                        { 
+                            name: isEs ? 'Proyecto de Aprendizaje de Servicio' : isEn ? 'Service-Learning Project' : isFr ? 'Projet d\'Apprentissage par le Service' : isDe ? 'Service-Learning-Projekt' : isIt ? 'Apprendimento di Servizio' : isAr ? 'مشروع التعلم الخدمي والتضامن' : isZh ? '社区志愿 with 服务学习实践' : 'Социальные проекты / Соціальні проекти', 
+                            desc: isEs ? 'Prácticas solidarias aplicadas en el entorno.' : isEn ? 'Community-oriented social solidarity projects.' : isFr ? 'Projets solidaires pour aider la communauté.' : isDe ? 'Soziale Projekte für die Gemeinschaft.' : isIt ? 'Progetti solidari applicati alla comunità.' : isAr ? 'ممارسات تضامنية لتطوير وتحسين البيئة المدرسية والمحلية.' : isZh ? '通过实际志愿服务活动提升社区环境。' : 'Солидарная практика, направленная на помощь местному сообществу.' 
+                        }
+                    ],
+                    observacion: isEs ? 'Exento del Seguro Escolar. Segunda Lengua Extranjera obligatoria.' : isEn ? 'Exempt from School Insurance. Second Foreign Language is mandatory.' : isFr ? 'Exempté d\'assurance scolaire. Deuxième langue obligatoire.' : isDe ? 'Schülerversicherung entfällt. Zweite Fremdsprache ist Pflicht.' : isIt ? 'Esenzione assicurazione scolastica. Seconda lingua obbligatoria.' : isAr ? 'معفى من التأمين المدرسي. اللغة الأجنبية الثانية إلزامية.' : isZh ? '无须缴纳学生安全险。第二外语为必修科目。' : 'Освобожден от оплаты страховки. Вторая иностранная обязательна.'
+                },
+                '2eso': {
+                    name: isEs ? '2º de ESO' : isEn ? 'Year 8 (2º ESO)' : isIt ? '2º Anno ESO' : isFr ? 'Classe de 4ème (2º ESO)' : isDe ? '8. Klasse (ESO)' : isAr ? 'الصف الثاني من التعليم الثانوي' : isZh ? '初中二年级' : '2-й курс ESO',
+                    troncales: isEs ? 
+                        ['Lengua Castellana y Literatura', 'Matemáticas', 'Geografía e Historia', 'Física y Química', 'Inglés (1ª Lengua)', 'Música', 'Tecnología y Digitalización', 'Educación Física'] :
+                        isEn ? 
+                        ['Spanish Language', 'Mathematics', 'Geography & History', 'Physics & Chemistry', 'English (1st Language)', 'Music', 'Technology & Digitalization', 'Physical Ed.'] :
+                        isIt ?
+                        ['Lingua Spagnola', 'Matematica', 'Geografia e Storia', 'Fisica e Chimica', 'Inglese (1ª Lingua)', 'Musica', 'Tecnologia', 'Educazione Fisica'] :
+                        isFr ?
+                        ['Langue Espagnole', 'Mathématiques', 'Géographie & Histoire', 'Physique & Chimie', 'Anglais (1ère Langue)', 'Musique', 'Technologie & Numérique', 'Éducation Physique'] :
+                        isDe ?
+                        ['Spanische Sprache & Lit.', 'Mathematik', 'Geographie & Geschichte', 'Physik & Chemie', 'Englisch (1. Fremdsprache)', 'Sport', 'Kunst', 'Technik & Digitalisierung'] :
+                        isAr ?
+                        ['اللغة الإسبانية وآدابها', 'الرياضيات', 'الجغرافيا والتاريخ', 'الفيزياء والكيمياء', 'اللغة الإنجليزية', 'الموسيقى', 'التكنولوجيا والرقمنة', 'التربية البدنية'] :
+                        isZh ?
+                        ['西班牙语语言与文学', '数学', '地理与历史', '物理与化学', '英语（第一外语）', '音乐', '技术与数字化', '体育'] :
+                        ['Испанский язык', 'Математика', 'География и История', 'Физика и Химия', 'Английский язык', 'Музыка', 'Технологии', 'Физкультура'],
+                    dirigidas: [],
+                    optativas: [
+                        { 
+                            name: isEs ? 'Francés (2ª Lengua Extranjera)' : isEn ? 'French (2nd Foreign Language)' : isFr ? 'Français (2ème Langue)' : isDe ? 'Französisch (2. Fremdsprache)' : isIt ? 'Francese (2ª Lingua)' : isAr ? 'الفرنسية (لغة أجنبية ثانية)' : isZh ? '法语（第二外语）' : 'Французский / Французька', 
+                            desc: isEs ? 'Conversación y comprensión escrita media.' : isEn ? 'Intermediate conversation and writing.' : isFr ? 'Compétences de communication intermédiaires.' : isDe ? 'Mittelstufe Konversation und Schreiben.' : isIt ? 'Conversazione e comprensione scritta intermedia.' : isAr ? 'مستوى متوسط للتحدث والمحادثة والفهم القرائي.' : isZh ? '中级法语，注重日常会话与书面理解。' : 'Средний уровень владения разговорной речью.' 
+                        },
+                        { 
+                            name: isEs ? 'Alemán (2ª Lengua Extranjera)' : isEn ? 'German (2nd Foreign Language)' : isFr ? 'Allemand (2ème Langue)' : isDe ? 'Deutsch (2. Fremdsprache)' : isIt ? 'Tedesco (2ª Lingua)' : isAr ? 'الألمانية (لغة أجنبية ثانية)' : isZh ? '德语（第二外语）' : 'Немецкий / Німецька', 
+                            desc: isEs ? 'Estructuras de diálogo cotidiano.' : isEn ? 'German structures for daily life conversation.' : isFr ? 'Structures de dialogue simples en allemand.' : isDe ? 'Einfache Strukturen for den Alltag.' : isIt ? 'Strutture base di conversazione quotidiana.' : isAr ? 'تعلم تراكيب المحادثة والجمل الألمانية اليومية.' : isZh ? '日常德国生活对话基础。' : 'Построение базовых разговорных моделей на немецком.' 
+                        },
+                        { 
+                            name: isEs ? 'Cultura Clásica' : isEn ? 'Classical Culture' : isFr ? 'Culture Classique' : isDe ? 'Klassische Kultur' : isIt ? 'Cultura Classica' : isAr ? 'الثقافة الكلاسيكية القديمة' : isZh ? '西方经典文化与神话' : 'Классическая культура / Класична культура', 
+                            desc: isEs ? 'Mitología clásica y el legado histórico.' : isEn ? 'Greco-Roman mythology and historical legacy.' : isFr ? 'Mythologie grecque et romaine et histoire.' : isDe ? 'Griechisch-römische Mythologie und Geschichte.' : isIt ? 'Mitologia grecoromana e patrimonio storico.' : isAr ? 'دراسة الأساطير اليونانية والرومانية القديمة وأثرها.' : isZh ? '学习希腊罗马神话以及欧洲历史起源。' : 'Греко-римская мифология, истоки слов и наше наследие.' 
+                        },
+                        { 
+                            name: isEs ? 'Taller de Emprendimiento' : isEn ? 'Entrepreneurship Workshop' : isFr ? 'Atelier d\'Entrepreneuriat' : isDe ? 'Unternehmer-Workshop' : isIt ? 'Laboratorio di Imprenditorialità' : isAr ? 'ورشة عمل ريادة الأعمال' : isZh ? '创业及商业启蒙工坊' : 'Мастерская предпринимательства / Майстерня підприємництва', 
+                            desc: isEs ? 'Trabajo cooperativo y diseño de ideas.' : isEn ? 'Teamwork, leadership, and project ideas.' : isFr ? 'Développement de la créativité et projets.' : isDe ? 'Kreativität und Projektgestaltung.' : isIt ? 'Lavoro cooperativo e creazione di idee di business.' : isAr ? 'تطوير الفكر الإبداعي والعمل الجماعي في المشاريع.' : isZh ? '培养商业敏感度、创意设计与团队协作。' : 'Развитие инициативы, креативности и бизнес-идей.' 
+                        },
+                        { 
+                            name: isEs ? 'Proyecto de Aprendizaje de Servicio' : isEn ? 'Service-Learning Project' : isFr ? 'Projet d\'Apprentissage par le Service' : isDe ? 'Service-Learning-Projekt' : isIt ? 'Apprendimento di Servizio' : isAr ? 'مشروع التعلم الخدمي والتضامن' : isZh ? '社区志愿与服务学习实践' : 'Социальные проекты / Соціальні проекти', 
+                            desc: isEs ? 'Involucración en proyectos sociales locales.' : isEn ? 'Active integration into community projects.' : isFr ? 'Action solidaire au niveau local.' : isDe ? 'Praktische gemeinnützige Arbeit vor Ort.' : isIt ? 'Coinvolgimento in progetti sociali locali.' : isAr ? 'الانخراط العملي في تلبية احتياجات المجتمع المحلي.' : isZh ? '走出课堂，参与学校或社区服务实践。' : 'Практическое участие в решении социальных проблем города.' 
+                        }
+                    ],
+                    observacion: isEs ? 'Exento del Seguro Escolar.' : isEn ? 'Exempt from School Insurance.' : isFr ? 'Exempté d\'assurance scolaire.' : isDe ? 'Schülerversicherung entfällt.' : isIt ? 'Esenzione assicurazione scolastica.' : isAr ? 'معفى من التأمين المدرسي.' : isZh ? '无须缴纳学生安全险。' : 'Освобожден от оплаты страховки.'
+                },
+                '3eso': {
+                    name: isEs ? '3º de ESO' : isEn ? 'Year 9 (3º ESO)' : isIt ? '3º Anno ESO' : isFr ? 'Classe de 3ème (3º ESO)' : isDe ? '9. Klasse (ESO)' : isAr ? 'الصف الثالث من التعليم الثانوي' : isZh ? '初中三年级' : '3-й курс ESO',
+                    troncales: isEs ? 
+                        ['Lengua Castellana', 'Geografía e Historia', 'Física y Química', 'Biología y Geología', 'Inglés (1ª Lengua)', 'Educación Física', 'Educación Plástica y Visual', 'Tecnología y Digitalización'] :
+                        isEn ? 
+                        ['Spanish Language', 'Geography & History', 'Physics & Chemistry', 'Biology & Geology', 'English (1st Language)', 'Physical Ed.', 'Visual Arts', 'Technology & Digitalization'] :
+                        isIt ?
+                        ['Lingua Spagnola', 'Geografia e Storia', 'Fisica e Chimica', 'Biologia e Geologia', 'Inglese (1ª Lingua)', 'Educazione Fisica', 'Arte e Disegno', 'Tecnologia'] :
+                        isFr ?
+                        ['Langue Espagnole', 'Géographie & Histoire', 'Physique & Chimie', 'Biologie & Géologie', 'Anglais (1ère Langue)', 'Éducation Physique', 'Arts Plastiques', 'Technologie & Numérique'] :
+                        isDe ?
+                        ['Spanische Sprache', 'Geographie & Geschichte', 'Physik & Chemie', 'Biologie & Geologie', 'Englisch (1. Fremdsprache)', 'Sport', 'Kunst', 'Technik & Digitalisierung'] :
+                        isAr ?
+                        ['اللغة الإسبانية وآدابها', 'الجغرافيا والتاريخ', 'الفيزياء والكيمياء', 'علم الأحياء والجيولوجيا', 'اللغة الإنجليزية', 'التربية البدنية', 'التربية الفنية والتشكيلية', 'التكنولوجيا والرقمنة'] :
+                        isZh ?
+                        ['西班牙语语言与文学', '地理与历史', '物理与化学', '生物与地质', '英语（第一外语）', '体育', '美术与视觉教育', '技术与数字化'] :
+                        ['Испанский язык', 'География и История', 'Физика и Химия', 'Биология и Geologia', 'Английский язык', 'Физкультура', 'Изобразительное искусство', 'Технологии'],
+                    dirigidas: [{
+                        id: 'matematicas_opcion',
+                        title: isEs ? 'Opción Obligatoria de Matemáticas' : isEn ? 'Mandatory Mathematics Track' : isFr ? 'Option de Mathématiques Obligatoire' : isDe ? 'Mathematik-Pflichtbereich' : isIt ? 'Scelta Matematica Obbligatoria' : isAr ? 'خيار الرياضيات الإلزامي' : isZh ? '数学修读路径必选' : 'Обязательный уровень математики',
+                        desc: isEs ? 'Elige la rama matemática según tu orientación académica:' : isEn ? 'Choose the math branch according to academic plans:' : isFr ? 'Choisissez la branche selon votre orientation scolaire :' : isDe ? 'Wählen Sie den mathematischen Schwerpunkt:' : isIt ? 'Scegli l\'indirizzo di matematica per il futuro:' : isAr ? 'اختر مسار الرياضيات بناءً على اتجاهك الدراسي في المستقبل:' : isZh ? '根据未来的升学计划选择适合的数学方向：' : 'Выберите профиль математики в зависимости от дальнейших планов:',
+                        options: [
+                            { 
+                                name: isEs ? 'Matemáticas Académicas' : isEn ? 'Academic Mathematics' : isFr ? 'Mathématiques Académiques' : isDe ? 'Akademische Mathematische' : isIt ? 'Matematica Accademica' : isAr ? 'الرياضيات الأكاديمية' : isZh ? '学术方向数学' : 'Академическая математика', 
+                                desc: isEs ? 'Enfoque avanzado recomendado para Bachillerato.' : isEn ? 'Advanced approach recommended for High School/Bachillerato.' : isFr ? 'Approche théorique avancée recommandée pour le lycée.' : isDe ? 'Fortgeschrittener Ansatz, empfohlen für das Abitur.' : isIt ? 'Approccio teorico consigliato per il Bachillerato.' : isAr ? 'نهج نظري ومتقدم يوصى به للطلاب الراغبين في دراسة البكالوريا.' : isZh ? '理论和分析方向，推荐后期计划读高중的学生。' : 'Продвинутый курс, необходимый для подготовки к поступлению в бакалавриат.' 
+                            },
+                            { 
+                                name: isEs ? 'Matemáticas Aplicadas' : isEn ? 'Applied Mathematics' : isFr ? 'Mathématiques Appliquées' : isDe ? 'Angewandte Mathematik' : isIt ? 'Matematica Applicata' : isAr ? 'الرياضيات التطبيقية' : isZh ? '应用方向数学' : 'Прикладная математика', 
+                                desc: isEs ? 'Enfoque práctico recomendado para Formación Profesional.' : isEn ? 'Practical approach recommended for vocational training.' : isFr ? 'Approche pratique recommandée pour la formation professionnelle.' : isDe ? 'Praktischer Ansatz, empfohlen für Berufsschulen.' : isIt ? 'Inclinazione pratica utile per la Formazione Professionale.' : isAr ? 'نهج عملي وتطبيقي يوصى به لطلاب التكوين المهني.' : isZh ? '实用与工具方向，推荐后期计划读职业中专（FP）的学生。' : 'Практический курс, рекомендуемый для профессионально-технического образования.' 
+                            }
+                        ]
+                    }],
+                    optativas: [
+                        { 
+                            name: isEs ? 'Francés (2ª Lengua Extranjera)' : isEn ? 'French (2nd Foreign Language)' : isFr ? 'Français (2ème Langue)' : isDe ? 'Französisch (2. Fremdsprache)' : isIt ? 'Francese (2ª Lingua)' : isAr ? 'الفرنسية (لغة أجنبية ثانية)' : isZh ? '法语（第二外语）' : 'Французский / Французька', 
+                            desc: isEs ? 'Destrezas y fluidez oral en contextos reales.' : isEn ? 'Oral fluency and grammar in realistic contexts.' : isFr ? 'Communication orale dans des contextes réels.' : isDe ? 'Mündliche Geläufigkeit in Alltagssituationen.' : isIt ? 'Fluente comunicazione orale in contesti reali.' : isAr ? 'تحسين الطلاقة الشفوية واللغوية في مواقف حقيقية.' : isZh ? '中高级，强化在真实场景下的口语表达与写作。' : 'Повышение разговорной беглости и грамматики в реальных ситуациях.' 
+                        },
+                        { 
+                            name: isEs ? 'Alemán (2ª Lengua Extranjera)' : isEn ? 'German (2nd Foreign Language)' : isFr ? 'Allemand (2ème Langue)' : isDe ? 'Deutsch (2. Fremdsprache)' : isIt ? 'Tedesco (2ª Lingua)' : isAr ? 'الألمانية (لغة أجنبية ثانية)' : isZh ? '德语（第二外语）' : 'Немецкий / Німецька', 
+                            desc: isEs ? 'Conversación aplicada en situaciones cotidianas.' : isEn ? 'Spoken German for common everyday tasks.' : isFr ? 'Allemand pratique pour des situations courantes.' : isDe ? 'Praktisches Deutsch für den Alltag.' : isIt ? 'Conversazione tedesca per compiti della vita quotidiana.' : isAr ? 'مهارات المحادثة الألمانية للمواقف الحياتية العادية.' : isZh ? '中高级，针对日常生活事务的德语交流。' : 'Практический немецкий для общения в повседневной жизни.' 
+                        },
+                        { 
+                            name: isEs ? 'Cultura Clásica' : isEn ? 'Classical Culture' : isFr ? 'Culture Classique' : isDe ? 'Klassische Kultur' : isIt ? 'Cultura Classica' : isAr ? 'الثقافة الكلاسيكية القديمة' : isZh ? '经典文化探源' : 'Классическая культура / Класична культура', 
+                            desc: isEs ? 'Raíces romanas, democracia antigua y teatro.' : isEn ? 'Roman roots, ancient democracy, and theater.' : isFr ? 'Racines romaines, démocratie et théâtre.' : isDe ? 'Römische Wurzeln, antike Demokratie und Theater.' : isIt ? 'Democrazia antica, teatro e radici latine.' : isAr ? 'دراسة الديمقراطية القديمة والمسرح والقوانين الرومانية.' : isZh ? '研究古典时期民主演变、古剧场及法律起源。' : 'Изучение римских корней, античного театра и основ права.' 
+                        },
+                        { 
+                            name: isEs ? 'Computación y Robótica' : isEn ? 'Computing & Robotics' : isFr ? 'Informatique et Robotique' : isDe ? 'Informatik & Robotik' : isIt ? 'Informatica e Robotica' : isAr ? 'الروبوتات والتكنولوجيا' : isZh ? '软硬件编程与机器人' : 'Робототехника и Кодинг / Робототехніка та кодування', 
+                            desc: isEs ? 'Uso avanzado de actuadores y sensores integrados.' : isEn ? 'Advanced use of integrated actuators and sensors.' : isFr ? 'Utilisation avancée de capteurs et actionneurs.' : isDe ? 'Fortgeschrittene Nutzung von Aktoren und Sensoren.' : isIt ? 'Controllo avanzato di attuatori e sensori elettronici.' : isAr ? 'الاستخدام المتقدم لأجهزة الاستشعار والمحركات الذكية.' : isZh ? '深入了解集成感应元件、电路及微处理器控制。' : 'Создание сложных алгоритмов управления платами и датчиками.' 
+                        },
+                        { 
+                            name: isEs ? 'Creación Digital y Pensamiento Computacional' : isEn ? 'Digital Creation & Computational Thinking' : isFr ? 'Création Numérique et Pensée Comput.' : isDe ? 'Digitale Gestaltung & Informatisches Denken' : isIt ? 'Creazione Digitale e Pensiero Computazionale' : isAr ? 'الابتكار الرقمي والتفكير الحاسوبي' : isZh ? '数字内容设计与算法逻辑' : 'Цифровое творчество / Цифрова творчість', 
+                            desc: isEs ? 'Diseño web básico y multimedia.' : isEn ? 'Basic web design, media editing, and security.' : isFr ? 'Création de sites web basiques et édition média.' : isDe ? 'Webdesign, Medienbearbeitung und Sicherheit.' : isIt ? 'Strutturazione di siti web basici, audio e video.' : isAr ? 'تصميم مواقع الويب الأساسية ومعالجة ملفات الوسائط.' : isZh ? '学习基础网页设计、音视频剪辑以及数字网络安全。' : 'Разработка сайтов, обработка аудио/видео и защита информации.' 
+                        }
+                    ],
+                    observacion: isEs ? 'Seguro Escolar obligatorio (1,12 €).' : isEn ? 'Mandatory School Insurance (€1.12).' : isFr ? 'Assurance scolaire obligatoire (1,12 €).' : isDe ? 'Schülerversicherung ist Pflicht (1,12 €).' : isIt ? 'Assicurazione scolastica obbligatoria (1,12 €).' : isAr ? 'التأمين المدرسي إلزامي (1.12 يورو).' : isZh ? '强制缴纳学生保险（1.12欧元）。' : 'Оплата обязательной школьной страховки (1,12 евро).'
+                },
+                '4eso': {
+                    name: isEs ? '4º de ESO' : isEn ? 'Year 10 (4º ESO)' : isIt ? '4º Anno ESO' : isFr ? 'Classe de 2nde (4º ESO)' : isDe ? '10. Klasse (ESO)' : isAr ? 'الصف الرابع من التعليم الثانوي' : isZh ? '初中四年级' : '4-й курс ESO',
+                    troncales: isEs ? 
+                        ['Lengua Castellana y Literatura', 'Geografía e Historia', 'Inglés (1ª Lengua Extranjera)', 'Educación Física'] :
+                        isEn ? 
+                        ['Spanish Language', 'Geography & History', 'English (1st Language)', 'Physical Ed.'] :
+                        isIt ?
+                        ['Lingua Spagnola', 'Geografia e Storia', 'Inglese (1ª Lingua)', 'Educazione Fisica'] :
+                        isFr ?
+                        ['Langue Espagnole', 'Géographie & Histoire', 'Anglais (1ère Langue)', 'Éducation Physique'] :
+                        isDe ?
+                        ['Spanische Sprache & Lit.', 'Geographie & Geschichte', 'Englisch (1. Fremdsprache)', 'Sport'] :
+                        isAr ?
+                        ['اللغة الإسبانية وآدابها', 'الجغرافيا والتاريخ', 'اللغة الإنجليزية', 'التربية البدنية'] :
+                        isZh ?
+                        ['西班牙语语言与文学', '地理与历史', '英语（第一外语）', '体育'] :
+                        ['Испанский язык', 'География и История', 'Английский язык', 'Физкультура'],
+                    dirigidas: [{
+                        id: 'itinerario_eso',
+                        title: isEs ? 'Vía u Opción Académica Obligatoria' : isEn ? 'Mandatory Academic Track' : isFr ? 'Option Académique Obligatoire' : isDe ? 'Zweigwahl (Pflichtbereich)' : isIt ? 'Indirizzo Accademico Obbligatorio' : isAr ? 'المسار الدراسي الإلزامي الموجه' : isZh ? '核心分流方向必选' : 'Профиль обучения (обязательный)',
+                        desc: isEs ? 'Elige el itinerario formativo dirigido:' : isEn ? 'Choose the educational path:' : isFr ? 'Choisissez le parcours d\'études :' : isDe ? 'Wählen Sie Ihren Bildungsweg:' : isIt ? 'Seleziona l\'itinerario formativo specifico:' : isAr ? 'اختر المسار التعليمي المناسب للمستقبل:' : isZh ? '选择具体的修读及班型方向：' : 'Выберите направление обучения:',
+                        options: [
+                            { 
+                                name: isEs ? 'Opción Ciencias' : isEn ? 'Science Track' : isFr ? 'Option Sciences' : isDe ? 'Naturwissenschaften' : isIt ? 'Indirizzo Scientifico' : isAr ? 'مسار العلوم والتكنولوجيا' : isZh ? '理科方向（Ciencias）' : 'Естественно-научный профиль', 
+                                desc: isEs ? 'Matemáticas A, Biología/Geología, Física/Química.' : isEn ? 'Core Math A, Biology/Geology, Physics/Chemistry.' : isFr ? 'Maths A, Biologie/Géologie, Physique/Chimie.' : isDe ? 'Math A, Biologie/Geologie, Physik/Chemie.' : isIt ? 'Matematica A, Biologia/Geologia, Fisica/Chimica.' : isAr ? 'الرياضيات أ، علم الأحياء، الفيزياء والكيمياء.' : isZh ? '主修高难度数学A、物理、化学、生物与地质。' : 'Математика А, Биология/Geology, Физика/Химия.' 
+                            },
+                            { 
+                                name: isEs ? 'Opción Humanidades y Ciencias Sociales' : isEn ? 'Humanities & Social Sciences Track' : isFr ? 'Option Humanités et Sciences Sociales' : isDe ? 'Geistes- & Sozialwissenschaften' : isIt ? 'Indirizzo Umanistico e Sociale' : isAr ? 'مسار العلوم الإنسانية والاجتماعية' : isZh ? '文科及社会科学方向（Letras）' : 'Гуманитарный профиль', 
+                                desc: isEs ? 'Matemáticas B, Latín, Economía y Emprendimiento.' : isEn ? 'Core Math B, Latin, Economics.' : isFr ? 'Maths B, Latin, Économie.' : isDe ? 'Math B, Latein, Wirtschaft.' : isIt ? 'Matematica B, Latino, Economia.' : isAr ? 'الرياضيات ب، اللاتينية، الاقتصاد وريادة الأعمال.' : isZh ? '主修实用数学B、拉丁语、经济学与商业意识。' : 'Математика Б, Латынь, Экономика и Основы бизнеса.' 
+                            },
+                            { 
+                                name: isEs ? 'Opción Enseñanzas Aplicadas' : isEn ? 'Applied Sciences Track' : isFr ? 'Option Sciences Appliquées' : isDe ? 'Angewandte Wissenschaften' : isIt ? 'Indirizzo Scienze Applicate' : isAr ? 'مسار العلوم التطبيقية والمهنية' : isZh ? '应用技术方向（Enseñanzas Aplicadas）' : 'Прикладной профиль', 
+                                desc: isEs ? 'Matemáticas B, Tecnología, Ciencias Aplicadas.' : isEn ? 'Core Math B, Tech, Applied Science.' : isFr ? 'Maths B, Technologie, Sciences Appliquées.' : isDe ? 'Math B, Technik, Angewandte Wissenschaften.' : isIt ? 'Matematica B, Tecnologia, Scienze Applicate.' : isAr ? 'الرياضيات ب، التكنولوجيا والعلوم المهنية التطبيقية.' : isZh ? '主修实用数学B、通用技术、应用科学。' : 'Математика Б, Общетехнические предметы, Прикладные науки.' 
+                            }
+                        ]
+                    }],
+                    optativas: [
+                        { 
+                            name: isEs ? 'Francés (2ª Lengua Extranjera)' : isEn ? 'French (2nd Foreign Language)' : isFr ? 'Français (2ème Langue)' : isDe ? 'Französisch (2. Fremdsprache)' : isIt ? 'Francese (2ª Lingua)' : isAr ? 'الفرنسية (لغة أجنبية ثانية)' : isZh ? '法语（第二外语）' : 'Французский / Французька', 
+                            desc: isEs ? 'Uso avanzado e instrumental de la lengua.' : isEn ? 'Advanced language use and text comprehension.' : isFr ? 'Niveau instrumental avancé en français.' : isDe ? 'Fortgeschrittene Sprachbeherrschung.' : isIt ? 'Uso avanzato e analisi di testi.' : isAr ? 'الاستخدام المتقدم والعملي للغة الفرنسية.' : isZh ? '高级别，注重实际工具性应用及复杂阅读。' : 'Продвинутый уровень владения для учебы и общения.' 
+                        },
+                        { 
+                            name: isEs ? 'Cultura Científica' : isEn ? 'Scientific Culture' : isFr ? 'Culture Scientifique' : isDe ? 'Wissenschaftliche Allgemeinbildung' : isIt ? 'Cultura Scientifica' : isAr ? 'الثقافة العلمية والبيئية' : isZh ? '现代科学素养常识' : 'Научная картина мира / Наукова картина світу', 
+                            desc: isEs ? 'Salud, biotecnología, ecología y espacio.' : isEn ? 'Health, biotechnology, climate, and space.' : isFr ? 'Biotechnologie, environnement et espace.' : isDe ? 'Gesundheit, Biotechnologie, Klima und Weltraum.' : isIt ? 'Bioetica, salute, ecologia e cosmo.' : isAr ? 'دراسة قضايا الصحة والتكنولوجيا الحيوية والبيئة والفضاء.' : isZh ? '讨论生命健康、基因技术、环境保护与宇宙演变。' : 'Обсуждение научных открытий, экологии, космологии.' 
+                        },
+                        { 
+                            name: isEs ? 'Filosofía' : isEn ? 'Philosophy' : isFr ? 'Philosophie' : isDe ? 'Philosophie' : isIt ? 'Filosofia' : isAr ? 'الفلسفة والتفكير النقدي' : isZh ? '基础哲学与逻辑' : 'Философия / Філософія', 
+                            desc: isEs ? 'Iniciación a dilemas éticos y razonamiento crítico.' : isEn ? 'Critical thinking and ethical debates.' : isFr ? 'Raisonnement critique et dilemmes éthiques.' : isDe ? 'Kritisches Denken und ethische Debatten.' : isIt ? 'Ragionamento critico e grandi dilemmi etici.' : isAr ? 'مقدمة في التحليل الفكري والتساؤل النقدي والأخلاقي.' : isZh ? '初步培养逻辑思辨、批判性思维与伦理道德。' : 'Знакомство с критическим мышлением и этическими дилеммами.' 
+                        },
+                        { 
+                            name: isEs ? 'Música' : isEn ? 'Music' : isFr ? 'Musique' : isDe ? 'Musik' : isIt ? 'Musica' : isAr ? 'الموسيقى والفنون الصوتية' : isZh ? '音乐素养与数字创作' : 'Музыка / Музика', 
+                            desc: isEs ? 'Producción de sonido y géneros modernos.' : isEn ? 'Sound design, digital editing, and genres.' : isFr ? 'Création musicale et traitement audio.' : isDe ? 'Sounddesign, digitale Bearbeitung und Genres.' : isIt ? 'Composizione acustica e generi musicali digitali.' : isAr ? 'الإنتاج الموسيقي الرقمي ودراسة الأنواع الحديثة.' : isZh ? '学习数字音效合成、声频编辑以及现代流派。' : 'Цифровая обработка звука и изучение современных стилей.' 
+                        },
+                        { 
+                            name: isEs ? 'Artes Escénicas y Danza' : isEn ? 'Performing Arts & Dance' : isFr ? 'Arts du Spectacle et Danse' : isDe ? 'Darstellendes Spiel & Tanz' : isIt ? 'Arti dello Spettacolo' : isAr ? 'الفنون المسرحية والتعبير الحركي' : isZh ? '戏剧表演与形体艺术' : 'Сценическое искусство / Сценічне мистецтво', 
+                            desc: isEs ? 'Técnicas teatrales e improvisación.' : isEn ? 'Acting techniques, posture, and expression.' : isFr ? 'Théâtre, danse et expression artistique.' : isDe ? 'Schauspieltechnik, Körperhaltung und Ausdruck.' : isIt ? 'Tecniche del teatro, postura ed espressione.' : isAr ? 'تقنيات التمثيل المسرحي والارتجال والتعبير الإيمائي.' : isZh ? '舞台形体训练、台词表达与现场即兴表演。' : 'Актерское мастерство, сценическая речь и импровизация.' 
+                        },
+                        { 
+                            name: isEs ? 'Formación y Orientación Personal y Profesional' : isEn ? 'Personal & Vocational Orientation' : isFr ? 'Orientation Personnelle et Professionnelle' : isDe ? 'Persönliche & Berufliche Orientierung' : isIt ? 'Orientamento Vocazionale' : isAr ? 'التوجيه والإرشاد المهني والشخصي' : isZh ? '生涯规划与职业启蒙' : 'Профориентация / Профорієнтація', 
+                            desc: isEs ? 'Ayuda a planificar estudios posteriores.' : isEn ? 'Career guidance and self-discovery.' : isFr ? 'Aide à la planification des études futures.' : isDe ? 'Berufsberatung und Selbstfindung.' : isIt ? 'Supporto nella decisione del percorso scolastico futuro.' : isAr ? 'تحديد الخيارات الدراسية والمهنية الأنسب للمستقبل.' : isZh ? '自我探索与学业规划，帮助过渡到FP或高中。' : 'Помощь в выборе будущей профессии и профиля образования.' 
+                        }
+                    ],
+                    observacion: isEs ? 'Seguro Escolar obligatorio (1,12 €).' : isEn ? 'Mandatory School Insurance (€1.12).' : isFr ? 'Assurance scolaire obligatoire (1,12 €).' : isDe ? 'Schülerversicherung ist Pflicht (1,12 €).' : isIt ? 'Assicurazione scolastica obbligatoria (1,12 €).' : isAr ? 'التأمين المدرسي إلزامي (1.12 يورو).' : isZh ? '强制缴纳学生保险（1.12欧元）。' : 'Оплата обязательной школьной страховки (1,12 евро).'
+                }
+            };
+        };
+
+        // --- ICONOS LOCALES ---
+        const IconsComponents = {
+            Globe: () => <svg className="h-6 w-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 002 2 2 2 0 012 2v.5a2.5 2.5 0 002.5 2.5h1.391M9 21a9 9 0 100-18 9 9 0 000 18z" /></svg>,
+            Check: () => <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>,
+            AlertCircle: () => <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+        };
+
+        function App() {
+            const [lang, setLang] = useState(null);
+            const [activeTab, setActiveTab] = useState('planner');
+            const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+            // Chat State
+            const [messages, setMessages] = useState([]);
+            const [inputText, setInputText] = useState('');
+            const [isTyping, setIsTyping] = useState(false);
+            const messagesEndRef = useRef(null);
+
+            // Optativas Planner State
+            const [selectedCourse, setSelectedCourse] = useState('1eso');
+            const [selectedDirigidas, setSelectedDirigidas] = useState({});
+            const [preferredOptativas, setPreferredOptativas] = useState([]);
+            const [religionOption, setReligionOption] = useState('Atención Educativa (Valores)');
+            const [extraInfo, setExtraInfo] = useState({ transporte: false, comedor: false, ampa: true });
+
+            // Checklist State
+            const [checklistOptions, setChecklistOptions] = useState({
+                separados: false,
+                alergias: false,
+                comedorSolicita: false,
+                discapacidad: false,
+                famNumerosa: false,
+                traslado: false
+            });
+
+            // Sincronizar el chat al cambiar de idioma
+            useEffect(() => {
+                if (lang) {
+                    const welcomeText = TRANSLATIONS[lang].chatWelcome;
+                    setMessages([
+                        {
+                            sender: 'bot',
+                            text: welcomeText,
+                            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                        }
+                    ]);
+                }
+            }, [lang]);
+
+            useEffect(() => {
+                messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+            }, [messages, isTyping]);
+
+            if (!lang) {
+                return (
+                    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-850 via-emerald-700 to-teal-950 p-4">
+                        <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-2xl max-w-xl w-full text-center space-y-6">
+                            <div className="bg-emerald-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto text-emerald-800 shadow-inner">
+                                <IconsComponents.Globe />
+                            </div>
+                            <div>
+                                <h1 className="text-2xl font-black text-slate-900 tracking-tight">MatriAndalucía</h1>
+                                <p className="text-slate-500 font-bold text-xs sm:text-sm mt-1">Selecciona tu idioma / Select your language</p>
+                            </div>
+                            
+                            {/* Rejilla de idiomas requerida */}
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                                <button onClick={() => setLang('es')} className="p-3.5 bg-slate-100 hover:bg-emerald-600 hover:text-white rounded-2xl font-bold transition text-xs flex flex-col items-center gap-1">
+                                    <span className="text-2xl">🇪🇸</span> Español
+                                </button>
+                                <button onClick={() => setLang('en')} className="p-3.5 bg-slate-100 hover:bg-emerald-600 hover:text-white rounded-2xl font-bold transition text-xs flex flex-col items-center gap-1">
+                                    <span className="text-2xl">🇬🇧</span> English
+                                </button>
+                                <button onClick={() => setLang('it')} className="p-3.5 bg-slate-100 hover:bg-emerald-600 hover:text-white rounded-2xl font-bold transition text-xs flex flex-col items-center gap-1">
+                                    <span className="text-2xl">🇮🇹</span> Italiano
+                                </button>
+                                <button onClick={() => setLang('fr')} className="p-3.5 bg-slate-100 hover:bg-emerald-600 hover:text-white rounded-2xl font-bold transition text-xs flex flex-col items-center gap-1">
+                                    <span className="text-2xl">🇫🇷</span> Français
+                                </button>
+                                <button onClick={() => setLang('de')} className="p-3.5 bg-slate-100 hover:bg-emerald-600 hover:text-white rounded-2xl font-bold transition text-xs flex flex-col items-center gap-1">
+                                    <span className="text-2xl">🇩🇪</span> Deutsch
+                                </button>
+                                <button onClick={() => setLang('ar')} className="p-3.5 bg-slate-100 hover:bg-emerald-600 hover:text-white rounded-2xl font-bold transition text-xs flex flex-col items-center gap-1">
+                                    <span className="text-2xl">🇦🇪</span> العربية
+                                </button>
+                                <button onClick={() => setLang('zh')} className="p-3.5 bg-slate-100 hover:bg-emerald-600 hover:text-white rounded-2xl font-bold transition text-xs flex flex-col items-center gap-1">
+                                    <span className="text-2xl">🇨🇳</span> 中文
+                                </button>
+                                <button onClick={() => setLang('ru')} className="p-3.5 bg-slate-100 hover:bg-emerald-600 hover:text-white rounded-2xl font-bold transition text-xs flex flex-col items-center gap-1">
+                                    <span className="text-2xl">🇷🇺</span> Русский
+                                </button>
+                                <button onClick={() => setLang('uk')} className="p-3.5 bg-slate-100 hover:bg-emerald-600 hover:text-white rounded-2xl font-bold transition text-xs flex flex-col items-center gap-1">
+                                    <span className="text-2xl">🇺🇦</span> Українська
+                                </button>
+                            </div>
+                            <div className="text-[10px] text-slate-400 font-bold">
+                                MatriAndalucía LOMLOE — 2026
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            const t = TRANSLATIONS[lang];
+            const courses = getCoursesData(lang);
+            const currentCourseData = courses[selectedCourse] || courses['1eso'];
+
+            const getLocalResponse = (query) => {
+                const cleanQuery = query.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                
+                for (const item of LOCAL_KNOWLEDGE) {
+                    const cleanQuestion = item.question.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[¿?]/g, "");
+                    const cleanInput = cleanQuery.replace(/[¿?]/g, "");
+                    if (cleanInput === cleanQuestion || cleanInput.includes(cleanQuestion) || cleanQuestion.includes(cleanInput)) {
+                        return item.answer;
+                    }
+                }
+
+                // Respuestas rápidas en varios idiomas para soporte multilingüe en local
+                if (cleanQuery.includes('iande') || cleanQuery.includes('clave')) {
+                    return LOCAL_KNOWLEDGE[0].answer;
+                }
+                if (cleanQuery.includes('seguro') || cleanQuery.includes('insurance') || cleanQuery.includes('assurance')) {
+                    return LOCAL_KNOWLEDGE[1].answer;
+                }
+                if (cleanQuery.includes('optativa') || cleanQuery.includes('elective') || cleanQuery.includes('option')) {
+                    return LOCAL_KNOWLEDGE[2].answer;
+                }
+
+                return lang === 'es' ? 
+                    "Por favor, revisa la pestaña 'Mis Elecciones' para configurar las asignaturas o pulsa sobre una pregunta frecuente a la izquierda." :
+                    "Please review 'My Choices' tab to arrange subjects or click on a frequent question on the left panel.";
+            };
+
+            const handleSendMessage = (textToSend) => {
+                const text = textToSend || inputText;
+                if (!text.trim()) return;
+
+                const userMsg = {
+                    sender: 'user',
+                    text: text,
+                    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                };
+                setMessages(prev => [...prev, userMsg]);
+                if (!textToSend) setInputText('');
+                setIsTyping(true);
+
+                setTimeout(() => {
+                    const botResponseText = getLocalResponse(text);
+                    setMessages(prev => [...prev, {
+                        sender: 'bot',
+                        text: botResponseText,
+                        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    }]);
+                    setIsTyping(false);
+                }, 600);
+            };
+
+            const toggleOptativa = (optName) => {
+                if (preferredOptativas.includes(optName)) {
+                    setPreferredOptativas(preferredOptativas.filter(item => item !== optName));
+                } else {
+                    setPreferredOptativas([...preferredOptativas, optName]);
+                }
+            };
+
+            const selectDirigida = (dirigidaId, optionName) => {
+                setSelectedDirigidas(prev => ({
+                    ...prev,
+                    [`${selectedCourse}_${dirigidaId}`]: optionName
+                }));
+            };
+
+            const triggerPrint = () => {
+                const printWindow = window.open('', '_blank');
+                const courseDirigidas = currentCourseData.dirigidas.map(d => {
+                    const chosen = selectedDirigidas[`${selectedCourse}_${d.id}`] || 'No seleccionada';
+                    return `<li><strong>${d.title}:</strong> ${chosen}</li>`;
+                }).join('');
+
+                printWindow.document.write(`
+                    <html>
+                        <head>
+                            <title>Borrador de Matrícula - MatriAndalucía</title>
+                            <style>
+                                body { font-family: sans-serif; padding: 40px; color: #1e293b; line-height: 1.6; }
+                                h2 { color: #047857; border-bottom: 2px solid #a7f3d0; padding-bottom: 12px; margin-bottom: 24px; }
+                                .section { margin-bottom: 24px; background: #f8fafc; padding: 16px; border-radius: 8px; border: 1px solid #e2e8f0; }
+                                .label { font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: bold; letter-spacing: 0.05em; }
+                                .val { font-size: 15px; font-weight: bold; margin-top: 4px; color: #0f172a; }
+                            </style>
+                        </head>
+                        <body>
+                            <h2>MatriAndalucía - ${currentCourseData.name}</h2>
+                            <div class="section">
+                                <div class="label">Valores o Religión:</div>
+                                <div class="val">${religionOption}</div>
+                            </div>
+                            ${currentCourseData.dirigidas.length > 0 ? `
+                            <div class="section">
+                                <div class="label">Asignaturas Dirigidas:</div>
+                                <div class="val"><ul>${courseDirigidas}</ul></div>
+                            </div>` : ''}
+                            <div class="section">
+                                <div class="label">Orden Completo de Optativas:</div>
+                                <div class="val">
+                                    <ol>${preferredOptativas.map(o => `<li>${o}</li>`).join('')}</ol>
+                                </div>
+                            </div>
+                            <p style="font-size: 11px; color: #64748b;">${t.footerText}</p>
+                        </body>
+                    </html>
+                `);
+                printWindow.document.close();
+                printWindow.print();
+            };
+
+            const totalCourseOptativas = currentCourseData.optativas.length;
+            const remainingToOrder = totalCourseOptativas - preferredOptativas.length;
+            const progressPercent = Math.round((preferredOptativas.length / totalCourseOptativas) * 100);
+
+            const allDirigidasSelected = currentCourseData.dirigidas.every(d => 
+                !!selectedDirigidas[`${selectedCourse}_${d.id}`]
+            );
+
+            const canSubmit = remainingToOrder === 0 && allDirigidasSelected;
+
+            return (
+                <div className="min-h-screen flex flex-col bg-slate-50" dir={t.dir}>
+                    {/* Header */}
+                    <header className="bg-emerald-800 text-white shadow-lg sticky top-0 z-40">
+                        <div className="h-1 bg-white flex">
+                            <div className="w-1/3 bg-emerald-600"></div>
+                            <div className="w-1/3 bg-white"></div>
+                            <div className="w-1/3 bg-emerald-600"></div>
+                        </div>
+                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
+                            <div className="flex items-center space-x-3">
+                                <div className="bg-emerald-100 p-2 rounded-xl text-emerald-800 shadow-inner flex items-center justify-center">
+                                    <IconsComponents.Globe />
+                                </div>
+                                <h1 className="font-extrabold text-base sm:text-xl tracking-tight">
+                                    MatriAndalucía
+                                </h1>
+                            </div>
+
+                            {/* Desktop Nav */}
+                            <nav className="hidden md:flex space-x-1">
+                                <button onClick={() => setActiveTab('planner')} className={`px-4 py-2 rounded-xl text-sm font-bold transition ${activeTab === 'planner' ? 'bg-emerald-900 text-white' : 'text-emerald-100 hover:bg-emerald-700'}`}>
+                                    {t.navPlanner}
+                                </button>
+                                <button onClick={() => setActiveTab('chat')} className={`px-4 py-2 rounded-xl text-sm font-bold transition ${activeTab === 'chat' ? 'bg-emerald-900 text-white' : 'text-emerald-100 hover:bg-emerald-700'}`}>
+                                    {t.navChat}
+                                </button>
+                                <button onClick={() => setActiveTab('checklist')} className={`px-4 py-2 rounded-xl text-sm font-bold transition ${activeTab === 'checklist' ? 'bg-emerald-900 text-white' : 'text-emerald-100 hover:bg-emerald-700'}`}>
+                                    {t.navCheck}
+                                </button>
+                                <button onClick={() => setActiveTab('guide')} className={`px-4 py-2 rounded-xl text-sm font-bold transition ${activeTab === 'guide' ? 'bg-emerald-900 text-white' : 'text-emerald-100 hover:bg-emerald-700'}`}>
+                                    {t.navGuide}
+                                </button>
+                            </nav>
+
+                            <button onClick={() => { setLang(null); setPreferredOptativas([]); }} className="text-xs font-bold bg-emerald-950 px-3 py-1.5 rounded-xl border border-emerald-700 hover:bg-emerald-900 transition flex items-center gap-1">
+                                {t.back}
+                            </button>
+                        </div>
+                    </header>
+
+                    {/* Main */}
+                    <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+                        {activeTab === 'planner' && (
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                <div className="lg:col-span-2 bg-white rounded-2xl shadow-xs border border-slate-200 p-5 sm:p-6 space-y-6">
+                                    <div className="flex items-center gap-3 pb-4 border-b">
+                                        <div className="p-2 bg-emerald-100 text-emerald-800 rounded-xl">
+                                            <IconsComponents.Globe />
+                                        </div>
+                                        <div>
+                                            <h3 className="font-extrabold text-lg text-slate-900">{t.navPlanner}</h3>
+                                            <p className="text-xs text-slate-500">{t.summaryDesc}</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Selección de Curso */}
+                                    <div className="space-y-3">
+                                        <label className="text-sm font-bold text-slate-700 block">1. {t.course}:</label>
+                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                            {Object.keys(courses).map((key) => (
+                                                <button 
+                                                    key={key} 
+                                                    onClick={() => setSelectedCourse(key)} 
+                                                    className={`px-3 py-2 text-xs rounded-xl font-bold border transition ${selectedCourse === key ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'}`}
+                                                >
+                                                    {courses[key].name}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Obligatorias Comunes */}
+                                    <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 sm:p-5">
+                                        <h4 className="font-extrabold text-slate-900 text-xs sm:text-sm uppercase tracking-wider mb-2">{t.subjectTroncal}</h4>
+                                        <p className="text-[11px] text-slate-500 mb-3">{t.subjectTroncalDesc}</p>
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {currentCourseData.troncales.map((materia, i) => (
+                                                <span key={i} className="bg-white border border-slate-200 text-slate-700 text-xs px-3 py-1.5 rounded-lg font-bold shadow-2xs">
+                                                    {materia}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Elecciones Dirigidas Obligatorias */}
+                                    {currentCourseData.dirigidas.length > 0 && (
+                                        <div className="space-y-4">
+                                            <label className="text-sm font-bold text-slate-700 block">2. {t.subjectDirigida}:</label>
+                                            {currentCourseData.dirigidas.map((dirigida) => {
+                                                const currentSelection = selectedDirigidas[`${selectedCourse}_${dirigida.id}`];
+                                                return (
+                                                    <div key={dirigida.id} className="bg-blue-50/50 border border-blue-200 rounded-2xl p-4 space-y-3">
+                                                        <h4 className="font-extrabold text-blue-950 text-xs sm:text-sm">{dirigida.title}</h4>
+                                                        <p className="text-xs text-blue-800 leading-normal">{dirigida.desc}</p>
+                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                            {dirigida.options.map((option) => {
+                                                                const isChosen = currentSelection === option.name;
+                                                                return (
+                                                                    <button
+                                                                        key={option.name}
+                                                                        onClick={() => selectDirigida(dirigida.id, option.name)}
+                                                                        className={`text-left p-3.5 rounded-xl border transition flex flex-col gap-1 ${isChosen ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-700 border-slate-200 hover:border-blue-400'}`}
+                                                                    >
+                                                                        <span className="font-extrabold text-xs sm:text-sm">{option.name}</span>
+                                                                        <span className={`text-[10px] ${isChosen ? 'text-blue-100' : 'text-slate-500'}`}>{option.desc}</span>
+                                                                    </button>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+
+                                    {/* Optativas */}
+                                    <div className="space-y-3">
+                                        <div className="flex justify-between items-center">
+                                            <label className="text-sm font-bold text-slate-700 block">3. {t.subjectOptativa}:</label>
+                                            <span className="text-[11px] bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full font-extrabold">
+                                                {preferredOptativas.length} / {totalCourseOptativas}
+                                            </span>
+                                        </div>
+                                        <p className="text-[11px] text-slate-500 leading-normal bg-amber-50 border border-amber-200 p-3 rounded-xl text-amber-900">
+                                            {t.subjectOptativaDesc}
+                                        </p>
+                                        <div className="grid grid-cols-1 gap-3">
+                                            {currentCourseData.optativas.map((opt) => {
+                                                const idx = preferredOptativas.indexOf(opt.name);
+                                                const isSelected = idx !== -1;
+                                                return (
+                                                    <button 
+                                                        key={opt.name} onClick={() => toggleOptativa(opt.name)}
+                                                        className={`text-left p-4 rounded-xl border transition flex justify-between items-center gap-4 ${isSelected ? 'bg-teal-50 border-teal-500 text-teal-950 border-2' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'}`}
+                                                    >
+                                                        <div className="flex flex-col">
+                                                            <span className="font-extrabold text-slate-900 text-xs sm:text-sm leading-tight">{opt.name}</span>
+                                                            <span className="text-[11px] text-slate-500 font-normal mt-1 leading-relaxed">{opt.desc}</span>
+                                                        </div>
+                                                        {isSelected ? (
+                                                            <span className="bg-emerald-600 text-white px-3 py-1.5 rounded-xl text-[10px] font-extrabold shadow-xs">
+                                                                {idx + 1}º {t.order}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="border border-dashed border-slate-300 text-slate-500 bg-slate-50 px-3 py-2 rounded-xl text-xs font-bold hover:border-emerald-300 transition">
+                                                                +
+                                                            </span>
+                                                        )}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+
+                                    {/* Religión / Valores */}
+                                    <div className="space-y-3">
+                                        <label className="text-sm font-bold text-slate-700 block">4. {t.subjectReligion}:</label>
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                            {['Religión Católica', 'Religión Evangélica', 'Atención Educativa (Valores)'].map((option) => (
+                                                <button key={option} onClick={() => setReligionOption(option)} className={`px-3 py-2.5 text-xs rounded-xl font-bold border transition ${religionOption === option ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'}`}>{option}</button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Servicios Adicionales */}
+                                    <div className="space-y-3 pt-4 border-t">
+                                        <label className="text-sm font-bold text-slate-700 block">{t.services}:</label>
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                            <label className="flex items-center gap-3 p-3 bg-slate-50 border rounded-xl text-xs font-bold cursor-pointer">
+                                                <input type="checkbox" checked={extraInfo.transporte} onChange={(e) => setExtraInfo({...extraInfo, transporte: e.target.checked})} className="rounded text-emerald-600 focus:ring-emerald-500" />
+                                                <span>🚌 {t.transporte}</span>
+                                            </label>
+                                            <label className="flex items-center gap-3 p-3 bg-slate-50 border rounded-xl text-xs font-bold cursor-pointer">
+                                                <input type="checkbox" checked={extraInfo.comedor} onChange={(e) => setExtraInfo({...extraInfo, comedor: e.target.checked})} className="rounded text-emerald-600 focus:ring-emerald-500" />
+                                                <span>🍽️ {t.comedor}</span>
+                                            </label>
+                                            <label className="flex items-center gap-3 p-3 bg-slate-50 border rounded-xl text-xs font-bold cursor-pointer">
+                                                <input type="checkbox" checked={extraInfo.ampa} onChange={(e) => setExtraInfo({...extraInfo, ampa: e.target.checked})} className="rounded text-emerald-600 focus:ring-emerald-500" />
+                                                <span>👪 {t.ampa}</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Sidebar Resumen */}
+                                <div className="bg-slate-900 text-slate-100 rounded-2xl p-5 flex flex-col justify-between border h-fit lg:sticky lg:top-20">
+                                    <div className="space-y-5">
+                                        <h4 className="font-extrabold text-base text-white border-b border-slate-800 pb-2">{t.summaryTitle}</h4>
+                                        
+                                        <div className="space-y-4 text-xs">
+                                            <div>
+                                                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">{t.course}:</span>
+                                                <p className="text-white font-bold text-base mt-0.5">{currentCourseData.name}</p>
+                                            </div>
+
+                                            {currentCourseData.dirigidas.length > 0 && (
+                                                <div className="bg-slate-800 p-3 rounded-xl border border-slate-800 space-y-2">
+                                                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">{t.subjectDirigida}:</span>
+                                                    {currentCourseData.dirigidas.map(d => {
+                                                        const selection = selectedDirigidas[`${selectedCourse}_${d.id}`];
+                                                        return (
+                                                            <div key={d.id} className="text-xs">
+                                                                <span className="text-slate-400">{d.title}: </span>
+                                                                <span className={selection ? 'text-blue-300 font-bold' : 'text-amber-400 font-bold'}>{selection || `❌ ${t.pending}`}</span>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+
+                                            <div>
+                                                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">{t.order} de Optativas:</span>
+                                                {preferredOptativas.length > 0 ? (
+                                                    <ol className="list-decimal pl-5 space-y-1 mt-1 text-white font-bold">
+                                                        {preferredOptativas.map((opt, i) => (
+                                                            <li key={i} className="text-emerald-300 font-bold">{opt}</li>
+                                                        ))}
+                                                    </ol>
+                                                ) : (
+                                                    <p className="text-amber-400 font-bold mt-1">⚠️ {t.pending}...</p>
+                                                )}
+                                            </div>
+
+                                            <div>
+                                                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">{t.subjectReligion}:</span>
+                                                <p className="text-white font-semibold mt-0.5">{religionOption}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="pt-5 border-t border-slate-800 mt-6">
+                                        <button 
+                                            onClick={triggerPrint} 
+                                            disabled={!canSubmit}
+                                            className={`w-full py-3 text-white rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-2 shadow-md transform hover:-translate-y-0.5 ${!canSubmit ? 'bg-slate-800 text-slate-500 cursor-not-allowed hover:translate-y-0' : 'bg-emerald-600 hover:bg-emerald-700'}`}
+                                        >
+                                            {!canSubmit ? `${t.btnProgressPending} (${remainingToOrder})` : t.btnProgressReady}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* TAB: CHAT */}
+                        {activeTab === 'chat' && (
+                            <div className="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-6 min-h-[480px]">
+                                <div className="lg:col-span-1 bg-white rounded-2xl border p-4 flex flex-col space-y-4">
+                                    <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-2 border-b pb-2">
+                                        {t.faqTitle}
+                                    </h3>
+                                    <div className="space-y-2 overflow-y-auto max-h-[200px] lg:max-h-none">
+                                        {LOCAL_KNOWLEDGE.map((faq) => (
+                                            <button key={faq.id} onClick={() => handleSendMessage(faq.question)} className="w-full text-left text-xs p-3 rounded-xl border border-slate-100 hover:border-emerald-300 hover:bg-emerald-50 transition font-bold text-slate-700 flex justify-between items-center gap-2">
+                                                <span>{faq.question}</span>
+                                                <IconsComponents.Check />
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="lg:col-span-3 bg-white rounded-2xl shadow-xs border flex flex-col h-[500px] overflow-hidden">
+                                    <div className="bg-slate-900 text-white px-4 py-3 flex items-center justify-between border-b">
+                                        <span className="font-extrabold text-sm">{t.chatHeader}</span>
+                                    </div>
+                                    <div className="flex-1 p-4 overflow-y-auto space-y-4 bg-slate-50">
+                                        {messages.map((msg, idx) => (
+                                            <div key={idx} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                                <div className={`rounded-xl px-4 py-2.5 text-xs sm:text-sm max-w-[80%] shadow-xs ${msg.sender === 'user' ? 'bg-emerald-700 text-white' : 'bg-white text-slate-800 border'}`}>
+                                                    {msg.text}
+                                                </div>
+                                            </div>
+                                        ))}
+                                        {isTyping && <div className="text-xs italic text-slate-400">{t.typing}</div>}
+                                        <div ref={messagesEndRef} />
+                                    </div>
+                                    <div className="p-3 bg-white border-t flex gap-2">
+                                        <input type="text" placeholder={t.placeholderChat} value={inputText} onChange={(e) => setInputText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()} className="flex-1 px-4 py-2 border rounded-full text-xs sm:text-sm outline-none" />
+                                        <button onClick={() => handleSendMessage()} className="bg-emerald-600 text-white px-4 py-2 rounded-full font-black text-xs">OK</button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* TAB: CHECKLIST */}
+                        {activeTab === 'checklist' && (
+                            <div className="bg-white rounded-2xl shadow-xs border border-slate-200 p-5 sm:p-6 space-y-6">
+                                <h3 className="font-black text-lg text-slate-900 border-b pb-2">{t.checklistTitle}</h3>
+                                <p className="text-xs text-slate-500">{t.checkDesc}</p>
+                                
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                    <label className="flex items-center gap-3 p-3.5 bg-slate-50 border rounded-xl text-xs font-bold cursor-pointer">
+                                        <input type="checkbox" checked={checklistOptions.separados} onChange={(e) => setChecklistOptions({...checklistOptions, separados: e.target.checked})} className="rounded text-emerald-600" />
+                                        <span>{t.checkSeparados}</span>
+                                    </label>
+                                    <label className="flex items-center gap-3 p-3.5 bg-slate-50 border rounded-xl text-xs font-bold cursor-pointer">
+                                        <input type="checkbox" checked={checklistOptions.alergias} onChange={(e) => setChecklistOptions({...checklistOptions, alergias: e.target.checked})} className="rounded text-emerald-600" />
+                                        <span>{t.checkAlergias}</span>
+                                    </label>
+                                    <label className="flex items-center gap-3 p-3.5 bg-slate-50 border rounded-xl text-xs font-bold cursor-pointer">
+                                        <input type="checkbox" checked={checklistOptions.comedorSolicita} onChange={(e) => setChecklistOptions({...checklistOptions, comedorSolicita: e.target.checked})} className="rounded text-emerald-600" />
+                                        <span>{t.checkComedor}</span>
+                                    </label>
+                                    <label className="flex items-center gap-3 p-3.5 bg-slate-50 border rounded-xl text-xs font-bold cursor-pointer">
+                                        <input type="checkbox" checked={checklistOptions.discapacidad} onChange={(e) => setChecklistOptions({...checklistOptions, discapacidad: e.target.checked})} className="rounded text-emerald-600" />
+                                        <span>{t.checkDiscapacidad}</span>
+                                    </label>
+                                    <label className="flex items-center gap-3 p-3.5 bg-slate-50 border rounded-xl text-xs font-bold cursor-pointer">
+                                        <input type="checkbox" checked={checklistOptions.famNumerosa} onChange={(e) => setChecklistOptions({...checklistOptions, famNumerosa: e.target.checked})} className="rounded text-emerald-600" />
+                                        <span>{t.checkFamNum}</span>
+                                    </label>
+                                    <label className="flex items-center gap-3 p-3.5 bg-slate-50 border rounded-xl text-xs font-bold cursor-pointer">
+                                        <input type="checkbox" checked={checklistOptions.traslado} onChange={(e) => setChecklistOptions({...checklistOptions, traslado: e.target.checked})} className="rounded text-emerald-600" />
+                                        <span>{t.checkTraslado}</span>
+                                    </label>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
+                                    <div className="bg-emerald-50/20 p-5 border border-emerald-100 rounded-2xl space-y-3 shadow-2xs">
+                                        <h5 className="font-extrabold text-emerald-950 text-xs sm:text-sm flex items-center gap-2">
+                                            <span className="w-2.5 h-2.5 bg-emerald-600 rounded-full"></span>
+                                            {t.commonDocsTitle}:
+                                        </h5>
+                                        <ul className="space-y-3 text-xs sm:text-sm text-slate-700">
+                                            {t.commonDocs.map((doc, idx) => (
+                                                <li key={idx} className="flex items-start gap-2.5">
+                                                    <IconsComponents.Check />
+                                                    <span>{doc}</span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+
+                                    <div className="p-5 border border-slate-200 rounded-2xl bg-white space-y-3">
+                                        <h5 className="font-extrabold text-slate-900 text-xs sm:text-sm flex items-center gap-2">
+                                            <span className="w-2.5 h-2.5 bg-amber-500 rounded-full"></span>
+                                            {t.conditionalDocsTitle}:
+                                        </h5>
+                                        <ul className="space-y-3 text-xs sm:text-sm text-slate-700">
+                                            {checklistOptions.separados && <li className="flex gap-2"><IconsComponents.AlertCircle /> <span>{t.condSeparados}</span></li>}
+                                            {checklistOptions.alergias && <li className="flex gap-2"><IconsComponents.AlertCircle /> <span>{t.condAlergias}</span></li>}
+                                            {checklistOptions.comedorSolicita && <li className="flex gap-2"><IconsComponents.AlertCircle /> <span>{t.condComedor}</span></li>}
+                                            {checklistOptions.discapacidad && <li className="flex gap-2"><IconsComponents.AlertCircle /> <span>{t.condDiscapacidad}</span></li>}
+                                            {checklistOptions.famNumerosa && <li className="flex gap-2"><IconsComponents.AlertCircle /> <span>{t.condFamNum}</span></li>}
+                                            {checklistOptions.traslado && <li className="flex gap-2"><IconsComponents.AlertCircle /> <span>{t.condTraslado}</span></li>}
+                                            {!checklistOptions.separados && !checklistOptions.alergias && !checklistOptions.comedorSolicita && !checklistOptions.discapacidad && !checklistOptions.famNumerosa && !checklistOptions.traslado && (
+                                                <li className="text-slate-500 italic text-center py-4">{t.condNone}</li>
+                                            )}
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* TAB: PASO A PASO */}
+                        {activeTab === 'guide' && (
+                            <div className="bg-white rounded-2xl shadow-xs border border-slate-200 p-5 sm:p-6 space-y-6">
+                                <div className="pb-4 border-b">
+                                    <h3 className="font-extrabold text-lg text-slate-900">{t.guideTitle}</h3>
+                                    <p className="text-xs text-slate-500">{t.guideDesc}</p>
+                                </div>
+
+                                <div className="space-y-6">
+                                    {[1, 2, 3, 4, 5].map((stepNum) => (
+                                        <div key={stepNum} className="flex flex-col md:flex-row gap-4 p-4 rounded-2xl border border-slate-100 hover:border-emerald-100 transition">
+                                            <div className="w-12 h-12 bg-emerald-600 text-white rounded-full flex items-center justify-center font-black text-lg shrink-0 shadow-md">
+                                                {stepNum}
+                                            </div>
+                                            <div className="space-y-1">
+                                                <h4 className="font-bold text-slate-900 text-sm sm:text-base">{t[`guide${stepNum}Title`]}</h4>
+                                                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">{t[`guide${stepNum}Desc`]}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </main>
+
+                    {/* Footer */}
+                    <footer className="bg-slate-900 text-slate-400 py-8 border-t border-slate-800 text-[11px] sm:text-xs">
+                        <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center gap-6 text-center md:text-left">
+                            <div>
+                                <p className="font-bold text-slate-200 text-sm">💚 MatriAndalucía — Multilingual Guide 2026</p>
+                                <p>{t.footerText}</p>
+                            </div>
+                            <a href="https://www.juntadeandalucia.es/educacion/secretariavirtual/" target="_blank" rel="noreferrer" className="text-emerald-400 hover:text-emerald-300 transition hover:underline font-bold">
+                                {t.officialPortal}
+                            </a>
+                        </div>
+                    </footer>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
